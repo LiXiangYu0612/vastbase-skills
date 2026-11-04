@@ -4,6 +4,7 @@
   "plugins": [
     {
       "name": "vastbase",
+      "version": "1.0.0",
       "source": "./",
       "description": "VastBase (G100) 数据库技能域：性能优化与故障诊断知识网（AWR 判读、等待事件源码溯源、Linux 层联动、现场救火、HA、PITR、案例库）",
       "category": "database"

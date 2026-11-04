@@ -33,6 +33,9 @@
 | OS · Filesystem Usage | 空间/inode 逼近满（pg_xlog/pg_arch 盘满=WAL 停写高危） | P4 / P9 |
 | OS · 网络（网卡/TCP/RTT/softnet/conntrack） | 丢包分层（ring/backlog/预算/队列/表满）、重传、RTT 劣化、短连接风暴、accept 队列饱和 | P11 / 症状 11 |
 | OS · dmesg | 内核级硬证据（OOM/存储/文件系统） | P7 等 |
+| OS · System Activity（cs/intr/forks/fd） | **Forks/s=进程+线程 churn 速率**（周期性突增=归档/外部命令 fork 指纹，联动 sys 高分诊与 env-E 判例）、切换风暴总量（配 cpu.md cswch/nvcswch 分列判读）、中断总量、fd 逼近上限 | P1 / P2 / sys 高 |
+| OS · db_proc（postmaster 段） | **Threads Δ=线程池膨胀**、nvcswch 高=CPU 争抢实锤、VmRSS 涨势、cpuset 钉核核查 | P1 / P7 / sys 高 |
+| 后台线程表（Thread/PID/State/WaitEvent） | **关键后台线程缺席/State 异常=停摆**（archiver/WALwriter/pagewriter 消失即 P4/P9 级，env-E 的 archiver fork 即此线） | P4 / P9 / sys 高 |
 | Load Profile | 吞吐/会话/SQL 速率画像（证据层） | 全形态证据 |
 | Cache Hit Ratio | 命中率真低（配物理读四点齐） | P3 |
 | Database Memory | 内存池构成、会话大户、Shared Context 增长 | P7 |
@@ -131,7 +134,10 @@
 ListenDrops/Overflows>0、File Handles used 逼近 Max open files soft、
 compact_stall>0、内存碎片率>50%、pgmajfault>50/s、conntrack count 逼近 max、
 softnet dropped/time_squeeze、zone 水位 WM Free<WM Min、listener Recv-Q 逼近
-Send-Q、Retrans%×RTT 并排读（真劣化 vs 丢在别处）。
+Send-Q、Retrans%×RTT 并排读（真劣化 vs 丢在别处）；
+**System Activity 三率**（Forks/s 对照基线看突增与周期、Context Switches/s、
+Interrupts/s）、db_proc 的 Threads Δ 与 nvcswch、后台线程表关键线程缺席
+（archiver/WALwriter/pagewriter）。
 
 ## 表 E：OS↔DB↔LOG 跨层关联组（合取立论——检查项之间的联系）
 
@@ -206,6 +212,11 @@ digest(extract.py) → ①第2步 健康总览 = 表D 机械闸产物(overview_t
   全量审计结论：其余检查项均为绝对量/真实事件类（fire 即真问题）不加守卫；
   挂账待校准：swap WARN=1000 页/min（≈4MB/min 绝对量过小）、Retrans% 小流量放大、
   TCP 三状态峰值样例口径
+- 2026-11-04 二轮（**全量提取审计**，用户问"报告有而未检的"）：表 A 补 3 行
+  ——System Activity（cs/intr/**forks/s**/fd）、db_proc（Threads Δ/nvcswch/
+  VmRSS/cpuset）、后台线程 State（关键线程缺席=停摆）；人工项扩 4 类。审计
+  方法=先枚举报告全部 section/列头再对账，此前"meminfo/zoneinfo 未采集"误判
+  的教训见 `../linux/memory.md` 存照
 - 表 A/B 随 awrrpt/logrpt 章节变化同步（vb_tool 升级 → `awr-report-reference.md`
   /`log-analysis.md` 先行，本表跟随）
 
