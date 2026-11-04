@@ -28,7 +28,7 @@
 | OS · Cgroup | **配额限流咬合、cpuset 给核少、cgroup OOM** | P2 / P7 |
 | OS · NUMA | 跨节点访存、库内存落点失衡 | 症状 11（延迟抖动/整体慢） |
 | OS · Softirq/IRQ 矩阵 | 中断/软中断风暴、**单核打满**（均值盲区） | P2 / P11 |
-| OS · 内存（meminfo/per-min/碎片/THP） | 换页真不足、水位将破、碎片化、压缩停顿 | P7 |
+| OS · 内存（meminfo/per-min/碎片/THP/页表） | 换页真不足、水位将破、碎片化、压缩停顿、页表是否肥大（fork 税读数；★PageTables/VmPTE 未采集=采集缺口，见 linux/memory.md 页表节） | P7 / sys 高 |
 | OS · Disk（身份列+await） | 介质档判定、读写延迟、IO 拥塞 | P3 / P4 |
 | OS · Filesystem Usage | 空间/inode 逼近满（pg_xlog/pg_arch 盘满=WAL 停写高危） | P4 / P9 |
 | OS · 网络（网卡/TCP/RTT/softnet/conntrack） | 丢包分层（ring/backlog/预算/队列/表满）、重传、RTT 劣化、短连接风暴、accept 队列饱和 | P11 / 症状 11 |
@@ -86,6 +86,7 @@
 | OS 资源 | 运行队列 max/核 | >2 / >1；**守卫：busy max<70%=无饱和佐证不判**（瞬时尖峰） | P1 |
 | OS 资源 | 内存可用 min | ≤10 / ≤20 | P7 |
 | OS 资源 | swap 换出 max（页/min） | ≥10000 / ≥1000 | P7 |
+| OS 资源 | PageTables(全机)/VmPTE(主进程) | 明显超"映射量/512"即肥大；GB 级+未用大页=fork 税高危（当前需手工取数） | sys 高 |
 | OS 资源 | 数据盘 await max（按介质） | SSD>5 / HDD>20（util 永不判读） | P3/P4 |
 | OS 资源 | Cgroup 配额咬合（nr_throttled Δ） | Δ>0 即异常（digest 旗标） | P2 |
 | OS 资源 | cgroup memory.events OOM | 绝对值>0 即异常 | P7 |

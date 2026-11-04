@@ -123,6 +123,26 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   的前兆；此时 compact_stall 会同步涨（碎片触发直接压缩）。碎片率低但
   compact_stall 高 = 分配突发而非持续碎片
 
+## 页表（PageTables / VmPTE）：fork 税与大页收益的读数
+
+- 口径：`/proc/meminfo` 的 `PageTables`（全机已分配页表页）、
+  `/proc/<pid>/status` 的 `VmPTE`（单进程）；渲染同 fs/proc/meminfo.c
+  锚（见来源）
+- 数学：每 2MB 已映射地址空间占 1 张 4KB PTE 页 → **页表量 ≈ 活跃映射量/512**。
+  例：300G 全触达共享内存 ≈600MB 页表
+- **判读"过大"**：VmPTE/PageTables 明显超过"映射量/512"的应有量，或单进程
+  VmPTE 达 GB 级且 HugePages 未启用 → 页表肥大。危害不在驻留（几百 MB 无妨），
+  在 **fork 税**：`copy_page_range`（kernel/fork.c）按页表总量整拷——GB 级页表
+  = 秒级单核停摆，且遍历中把父进程 MAP_PRIVATE 页改只读，引发 COW 风暴 +
+  全核 TLB 广播（env-E 实测：VmPTE GB 级 → fork 3.2s + 4.5s 风暴，见
+  `../cases/case-env-E-sys-spike-archiver-fork-202611.md` 与
+  `../troubleshooting/cpu-sys-high.md` fork 税节）
+- 处置：`enable_huge_pages`（HugeTLB）——共享区页表 ÷500，fork 税归零；
+  THP 不解决此问题（私有匿名页动态合并，另有拆分坑）
+- ★采集缺口：AWR OS 段现不含 PageTables/VmPTE（meminfo 只采了 MemTotal/
+  MemAvailable/SwapFree/Slab 等）——诊断 sys 高/fork 税时手工取：
+  `grep PageTables /proc/meminfo; grep VmPTE /proc/<主进程pid>/status`
+
 ## Slab 增长与内核对象泄漏（dentry/inode，区别于 fd 泄漏）
 
 - /proc/meminfo 三值：**Slab**（总量）= SReclaimable + SUnreclaim
