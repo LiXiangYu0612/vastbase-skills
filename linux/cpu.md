@@ -189,6 +189,7 @@ llist_add_batch 17.89%）；函数族语义=kernel/smp.c 与 arch/x86 TLB flush 
 `evals/` 未录——后续同类先落 fixture。
 
 
+## 判读速查（现象 → 命令 → 机制）
 
 | 现象 | 命令 | 机制指向 |
 |---|---|---|

@@ -269,3 +269,5 @@ mm/page-writeback.c（深读）：
 双层刷脏→`flush-checkpoint.md`、fsync 语义→`commit-sync-events.md`、
 落盘通路→`kernel-data-path.md`、介质/预读参数→`parameters.md`、
 OS 内存回收→`memory.md`。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（HDD 介质形态判定）

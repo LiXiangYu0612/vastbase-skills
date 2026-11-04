@@ -113,3 +113,5 @@ INIT_BUFFERTAG → BufTableHashCode
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（HDD 双写慢与缓存形态）

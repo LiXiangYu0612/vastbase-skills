@@ -16,7 +16,7 @@
 | 源码锚点复核 | `scripts/verify_anchors.py`：41 条断言回三棵源码树对账 | PASS 41/41（首轮 5 条 DRIFT 均为匹配到前向声明的误报，核器已修为全命中判） |
 | 真机抽验 env-A | keepalive GUC 真值 / authentication_timeout / bgwriter 列 / 监听队列语义 / nstat 基线 | **抓出并修正 2 处知识错误**：① authentication_timeout 存在默认 1min（推翻"无此 GUC"负向结论）② keepalive GUC 默认 0=跟随内核（env-A sysctl 实测 30/30/9，非编译默认 7200）；另实测确认：pg_stat_bgwriter 无 candidate 列（负向结论机器双确认）、ss -lnt Send-Q=3000（backlog 实值）、idle_in_txn_timeout 默认 0、max_connections=500 |
 | 沙箱 keepalive 实证（第二轮补） | env-A：`ss -tno` 可见 4 条 established 连接带 keepalive 定时器 | PASS——GUC=0 跟随内核语义的 socket 层实证（服务端连接确带 SO_KEEPALIVE，用内核 sysctl 30/30/9） |
-| 第二案例复盘 | evals/fixtures 16:52 窗 digest 全读 | cases/case-envC-awr-lowload-202610：三因并列（空载属实/5.8 天长事务钉 OldestXmin→gs_asp 膨胀/HDD 双写 308ms）+ 方法论发现"空载库 SQL 榜=采集自身" |
+| 第二案例复盘 | evals/fixtures 16:52 窗 digest 全读 | cases/case-env-C-awr-lowload-202610：三因并列（空载属实/5.8 天长事务钉 OldestXmin→gs_asp 膨胀/HDD 双写 308ms）+ 方法论发现"空载库 SQL 榜=采集自身" |
 
 ## 全链路复核轮（2026-10-26 深夜，用户令"逻辑严密正确、顶级专家水平"）
 
@@ -27,7 +27,7 @@
 | 跨文件一致性 | 裸 PG 简称×12 文件→Postgres；network.md keepalive 陈旧行对齐两层口径；behind 公式/15 分钟表述单源一致 ✓ |
 | 语义抽查 | 备库取快照等待方向 ✓ / most_available_sync 方向 ✓（且精确化为 DelayIntoMostAvaSync）/ O_DIRECT 条件 ✓ / lag 三段公式 ✓ / NESTLOOP_PARAM ✓ |
 | 边抽查 | log-analysis↔memory、replication-lag↔network、executor↔query-pipeline 三组两端均有正文承接 ✓ |
-| 诚实性 | case-envC 环境核实为测试机自采（与 env-A 同机）已如实标注 |
+| 诚实性 | case-env-C 环境核实为测试机自采（与 env-A 同机）已如实标注 |
 | 复核器 | verify_anchors 41→51 条（执行器/索引/连接/CM/checkpoint 新锚），51/51 PASS |
 
 ## fixture 更新轮（2026-10-28，用户令"去 env-T 生成一个真实的报告"）

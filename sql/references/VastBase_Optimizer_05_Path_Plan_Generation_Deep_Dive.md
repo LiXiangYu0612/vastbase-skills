@@ -499,3 +499,8 @@
    499|        if (index->amcanreturn) {
    500|            consider_index_only_scan(root, rel, index);
    501|
+
+---
+> ⚓ **截断注记（2026-11-05 审计）**：本篇在历史迁移时截断于 500 行，尾部
+> 小节缺失（原全量件已不可寻，待重写补齐——挂账 ROADMAP）；行号式清单为
+> 源码摘录，无独立 file:line 锚。

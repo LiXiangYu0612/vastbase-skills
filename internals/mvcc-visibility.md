@@ -56,7 +56,7 @@ transaction 会话持 xmin 到事务结束，**必然钉住 OldestXmin 卡 vacuu
 
 **判读铁律**：AWR 长事务表（ltx60）出现数小时 idle in transaction 而
 OldestXmin 列仍在推进=**正常机制，不是渲染 bug**；反过来，带 XID/持有效
-快照的长事务仍会钉（10-26 envC 案例 5.8 天长事务钉 OldestXmin 即此）。
+快照的长事务仍会钉（10-26 env-C 案例 5.8 天长事务钉 OldestXmin 即此）。
 钉与不钉的分界=是否持有效快照版本/已分配 XID，不是事务年龄。
 实战样本：env-M 20261104（3h idle in txn + OldestXmin 每采样推进 10 万+）。
 
@@ -87,3 +87,5 @@ OldestXmin 列仍在推进=**正常机制，不是渲染 bug**；反过来，带
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（OldestXmin 被长事务钉住的实测形态）

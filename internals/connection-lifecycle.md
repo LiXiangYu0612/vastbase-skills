@@ -145,3 +145,5 @@ autocommit=off` 语句仅 B 兼容模式生效；RR 隔离级别下隐式提交�
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`；互喂边：network（两级队列
 唯一消费者）、connection-refused（操作层四道闸）、memory（CAC_OOM×两层闸门）、
 metrics（会话/Threads 口径）。
+
+案例锚点：`../cases/case-env-odbc-idle-in-txn-202603.md`（idle in transaction 超时杀会话判例）

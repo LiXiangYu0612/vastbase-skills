@@ -479,7 +479,7 @@ def detect_missing_indexes(explain_output, table_stats, index_stats):
 ## 📊 SQLHC信息
 - SQLHC版本: 3.0.1
 - 收集时间: 2026-04-17 10:30:00
-- 数据库版本: VastBase 3.0.9.1
+- 数据库版本: VastBase V3.0.9（PSU1）
 - 主机名: prod-db-01
 
 ## 🔍 执行计划分析
@@ -777,3 +777,11 @@ training_record = {
 **最后更新**: 2026-04-17  
 **作者**: xiang  
 **基于**: VastBase SQL Health Check (sqlhc) 工具
+
+## 版本注记
+- 源自 2026-04 独立技能 vastbase-sql-optimizer（2026-10-26 并入本域），并入时
+  未逐篇复核；口径以本域 parameters/optimizer-deep 为准
+
+## 来源
+- 原独立技能文档迁移；示例数字未附原始会话证据（⚓待补实战出处）
+

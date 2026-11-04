@@ -88,9 +88,12 @@ behind = current_xlog_insert_lsn − queue_head_page_rec_lsn
 | checkpoint 慢先调 checkpoint_timeout | 增量模式下 redo 平时已被 pagewriter 推进，先查 behind 三形态 |
 | 全量尖峰当异常 | 查触发因：条件强制全量会打日志，正常行为 |
 
-## 版本注记 / 来源
+## 版本注记
 
 - 基线 openGauss 6.0.0（G100 V3 Build 8）
+
+## 来源
+
 - 源码核对（2026-10-25）：pagewriter.cpp:128-160（min_rec_lsn/insert_lsn 可观测件）、
   :408,549,611（队列游标）；vb_tool:31356-31368（公式与语义注释）；
   xlog.cpp:12149-12570（CreateCheckPoint 核心：增量/全量分叉、delayChkpt 等待、

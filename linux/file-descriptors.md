@@ -75,3 +75,11 @@
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`；互喂边：pgsql_tmp→
 `operator-memory.md`（P6）、连接数对账→`network.md` CurrEstab、
 rlimit 参数→`../performance/parameters.md` 组 2。
+
+## 常见错误
+
+| 错误 | 纠正 |
+|---|---|
+| fd 逼近上限就调大 max_files_per_process | 先分诊泄漏源（version.cfg/pgsql_tmp/游标），调大是给泄漏续命 |
+| pgsql_tmp 当垃圾清理 | 活跃排序的落盘文件，清了正在跑的查询会断 |
+| 拿 shell 的 ulimit 当实例上限 | 实例上限在 postmaster 的 limits 文件（采集即取该处） |

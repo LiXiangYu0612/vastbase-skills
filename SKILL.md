@@ -158,7 +158,7 @@ vastbase/
 | 流复制架构与 LSN 位点 | `ha/replication-architecture.md` | walsender/walreceiver 双流、四位点语义、模式状态机、同步语义表（synchronous_commit×standby_names）/级联/延迟回放/build 约束/vb_ctl query 状态机 |
 | HAS+DCS 高可用组件 | `ha/has-dcs-architecture.md` | 另一套 HA 栈：四模块决策树/DCS 键值/选举参数与最健康节点判定/pause 维护态/启停顺序/DCS 故障两形态 |
 | CM 集群人工处理清单 | `ha/cm-cluster-manual-ops.md` | cm 自动机制管不了的 6 类 13 场景：备 build/主 failover/脑裂/CM 元数据重建/CN/同步停备 hang |
-| 读写分离（Hydra-JDBC） | `ha/read-write-splitting.md` | 驱动层读写路由规则/负载均衡/主备切换感知/备库冲突报错转发主库 |
+| 读写分离（Hydra-JDBC） | `ha/read-write-splitting.md`（★内部课件源，公仓已排除，仅本地） | 驱动层读写路由规则/负载均衡/主备切换感知/备库冲突报错转发主库 |
 | 失败判定与切换 | `ha/failover.md` | promote 护栏文案、term 任期、RTO 构成、旧主 rewind（初版·源码先行） |
 | 脑裂成因与防护 | `ha/split-brain.md` | 双主三来源、term 护栏、most_available_sync 降级窗口的数据代价、处置原则 |
 | PITR 机制 | `backup-recovery/pitr-mechanism.md` | 归档拉取/恢复目标/回放同源/恢复决策（初版·源码先行） |

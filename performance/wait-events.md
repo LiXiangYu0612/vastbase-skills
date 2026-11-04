@@ -241,3 +241,5 @@ se:            该事件的 Triggers（file:line）与语义
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-envD-errstorm-202610.md`（计数型事件×错误风暴对账）

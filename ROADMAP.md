@@ -90,14 +90,14 @@
 
 ## 存量审计挂账（2026-11-05 全量 77 文件四路审计，P1 已修 19 项，遗留如下）
 
-- [ ] 案例反向锚点：envC（7 个机制文件无一回挂）、envD（wait-events）、
+- [ ] 案例反向锚点：env-C（7 个机制文件无一回挂）、envD（wait-events）、
       env-odbc（connection-lifecycle）
 - [ ] sql/references Optimizer 三篇恰 500 行截断（01 缺视图展开/表达式优化/
       常量折叠三节，06/09 代码块未闭合）+ 全篇无 file:line + 09 头部占位语；
       optimizer-deep 同查
 - [ ] sqlhc-analysis "225s→0.45s" 案例出处缺；sql/ 六文件缺「来源」「版本注记」
 - [ ] sqlhc-integration "3.0.9.1" 版本记法与 version-map 统一
-- [ ] cases 命名统一（envC/env-odbc 连字符风格对齐 env-A/env-E）
+- [ ] cases 命名统一（env-C/env-odbc 连字符风格对齐 env-A/env-E）
 - [ ] cpu.md 补"判读速查"节标题；os-triage/file-descriptors 补「常见错误」；
       flush-checkpoint 版本注记/来源分立
 - [ ] read-write-splitting.md:71 自标"公仓发布须脱敏重写或排除"——下次发布核对

@@ -290,3 +290,5 @@ OS 查（sysctl Begin≠End = 窗内改过，单列证据）。
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（报告全绿≠无病：长事务钉 OldestXmin+介质形态双因）

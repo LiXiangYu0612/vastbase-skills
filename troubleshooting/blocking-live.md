@@ -88,3 +88,5 @@ OS 侧同步留证：`ss -tnp | tee` 一份（假死连接排查，见 `../linux
 
 本文件为操作层，机制边见 `../KNOWLEDGE-GRAPH.md`：locks（队列/交接）、
 error-fatal（40P01/57014）、network（假死持锁）、wait-events（自旋盲区）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（空载假死排查链）

@@ -38,8 +38,7 @@
 
 - **触发条件**：cgroup memory.max 内回收耗尽（容器/cpuset 部署典型）
 - **root cause**：cgroup 限额 vs 实际需求错配——查 memory.max、memory.current、
-  memory.events 的 oom（尝试）与 oom_kill（真杀）差分（★口径待核⚓：cgroup
-  v1 是 memory.oom_control、v2 才是 memory.events，以 vb_tool 实采形态为准）；
+  memory.events 的 oom（尝试）与 oom_kill（真杀）差分（口径已核：vb_tool 实采 cgroup v2 形态 memory.max/memory.events；v1 oom_control 不采）；
   **全局 MemAvailable 高≠安全**（限额在组内）
 - **处置**：调 memory.max 或缩库内存（max_process_memory 配比），先定责再动
 

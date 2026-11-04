@@ -332,3 +332,5 @@ OS 异常先在方向 A 落 DB 侧影，DB 异常先在方向 B 去 OS 侧查证
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（%DBtime>100 口径与空载 OS 忙形态）

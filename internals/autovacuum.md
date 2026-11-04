@@ -89,3 +89,5 @@ PID"，allow_autovacuum_cancel 控制）——vacuum 让路重跑，业务不等
 ## 知识网
 
 本节点的关系与导航路径见 `../KNOWLEDGE-GRAPH.md`（节点 · 边 · 从问题进网）。
+
+案例锚点：`../cases/case-env-C-awr-lowload-202610.md`（5.8 天残留长事务压 vacuum 判例）
