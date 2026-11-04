@@ -91,7 +91,10 @@
 ## 存量审计挂账（2026-11-05 全量 77 文件四路审计，P1 已修 19 项，遗留如下）
 
 - [x] 案例反向锚点 ×9（env-C×7/envD/env-odbc）——2026-11-05 补
-- [ ] Optimizer 九篇 500 行截断：⚓注记已加，**重写是唯一路**——2026-11-05 实证：Obsidian 母本（/mnt/d/Obsidian/Vastbase/sql_optimizer/references/）九篇同为整 500 行，gitee 原仓已 404，全量件从未存在（500 上限在源头生成时即形成）
+- [x] Optimizer 九篇 500 行截断——**2026-11-05 重写完成**（7cf2180）：剥行号还原
+      Markdown，01 补齐目录承诺四节、02-09 断尾收口，4500→6435 行，三组写作
+      agent 源码实读交付，验收四关过；原注记（Obsidian 母本同 500 行/gitee 404、
+      全量件从未存在）作为不恢复原文的依据存档
 - [x] sql 六文件「来源」「版本注记」补齐；[ ] sqlhc "225s→0.45s" 出处⚓待补
 - [x] sqlhc-integration 版本记法统一 V3.0.9（PSU1）
 - [x] cases 命名：envC→env-C；env-odbc 保留（代号位作主题描述符，特例）
