@@ -84,9 +84,8 @@
 ## 欠账速查（⚓→✅ 的升级线索）
 
 六笔主欠账 + 七笔边角锚点 2026-10-25 全部收口（含两个**负向实锤**：
-候选链双计数器无视图出口——其中"基线无认证超时 GUC"已于 2026-11-05 翻案为存在，见连接生命周期行）。仍开的小锚：锁不可得
-跳过文案（autovacuum）· AuthenticationTimeout 是否以别名存在
-（connection-lifecycle）· cgroup v2 swappiness 语义细节（linux/memory）
+候选链双计数器无视图出口——其中"基线无认证超时 GUC"已于 2026-11-05 翻案为存在，见连接生命周期行）。原列小锚（autovacuum 文案/AuthenticationTimeout/cgroup v2）已于 2026-11-05
+全部收口（见缺口盘点节），本节无挂账
 
 ## 存量审计挂账（2026-11-05 全量 77 文件四路审计，P1 已修 19 项，遗留如下）
 
@@ -120,6 +119,8 @@
 - [x] **备份窗口性能**——2026-11-05 成篇 backup-window-performance.md（四形态
       +archive_dest 不 fork 回避+posix_spawn 根治线；附带修正：pg_probackup
       源码在基线树内且无限速参数=负向实锤）
-- 小锚收口（沿账）：向量化/SMP 执行体⚓ · MemoryContext 拦截函数 · HOT 判定
-  函数名 · autovacuum 锁不可得文案 · AuthenticationTimeout 别名 ·
-  cgroup v2 swappiness 细节 · fd-vfd/heap-tuple 的 6.0.0 正式树行号对齐
+- [x] 小锚七笔 2026-11-05 全数收口：向量化/SMP 升结构级实锚（VectorEngine
+  分发表+Stream 启动链）/MemoryContext 拦截四层链/HOT=HeapSatisfiesHOTUpdate/
+  锁不可得双文案/authentication_timeout 翻案为存在（旧负向=六分表漏检）/
+  cgroup v2 swappiness 终局（v2 无 per-memcg 旋钮恒全局）/fd-vfd 20 处+
+  heap-tuple 10+1 处行号对齐 6.0.0 树
