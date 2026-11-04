@@ -33,7 +33,7 @@
 | PBE 计划缓存 | ✅深（14 级瀑布；11-03 补：10 参数全景/集中式 pbe_optimization 无条件退化/batch bind 强制开/C/G 观测配方 client_min_messages=debug2/plan_cache_type_validation；自适应分岔另立专篇） | query-plan-cache.md |
 | 自适应计划选择（gplanmgr/PMGR） | ✅深（11-03 新立：五步框架/CachedPlanInfo 结构/CI 学习/淘汰赛/启用七闸/Choose_adaptive_gplan hint；env-T 全生命周期实测） | adaptive-plan-mgr.md |
 | 统计→选择率 | ✅深；采样：块=Algorithm S、行=蓄水池替换、MCV 阈值+等频直方图构建全深（2026-10-25 二次） | stats-to-cost.md |
-| plan 生成（枚举/DP/geqo/参数化） | ⚓ 目录级（geqo 存在、参数化路径有 beta 位） | query-pipeline.md |
+| plan 生成（枚举/DP/geqo/参数化） | ✅深（2026-11-05 references 05 补齐：add_path 四维竞争/FUZZY 因子/geqo 全链/索引路径生成） | query-pipeline.md + sql/references/05 |
 | opfusion / 向量化 / SMP | opfusion ✅深（11-03 成专篇：参数族/双入口/bypass 分型/观测配方；向量化与 SMP 仍 ⚓ 骨架级） | internals/opfusion.md + query-pipeline.md |
 | 代价模型/SQLHC 分析/查询转换深潜 | ✅已并入（原独立技能 8 文件迁至 sql/：deep 56KB+sqlhc×3+usage+quickref+references 深潜系列；2026-10-26 用户令"完全并入删源"） | sql/optimizer-deep.md 等 6 件 |
 
@@ -98,3 +98,24 @@
 - [x] cpu.md 判读速查标题；os-triage/file-descriptors 常见错误；flush-checkpoint 分立
 - [x] read-write-splitting 内部课件出仓（gitignore+留盘+路由行加注）
 - [x] OOM B 型口径定稿（vb_tool 实采 cgroup v2）；[ ] env-E VmPTE 取数⚓
+
+## 性能优化缺口盘点（2026-11-05 用户问"还缺什么"，全量对账后立账）
+
+机制层四域已厚；缺口集中在**操作决策层/外部数据源/对比方法论**三类：
+
+- [ ] **已知问题清单**（◻ 沿账）——VastBase 官方文档已知问题爬梳（JS 渲染站，
+      需浏览器方式抓取）；现场"是不是已知 bug"高频，价值最高
+- [ ] **容量规划与基线方法论**——趋势外推/扩容判断阈值/基线建立与漂移检测
+      （健康报告"分析"节已提容量余量，缺独立方法论件）
+- [ ] **统计信息运维策略件**——analyze 频率决策/统计过期检测/目标列调优/
+      扩展统计（机制件 stats-to-cost 已深，缺操作层）
+- [ ] **索引维护决策件**——bloat 识别（密度法已锚）/REINDEX 策略与窗口/
+      无用索引下线流程（机制件 index-btree 已深，缺操作层）
+- [ ] **历史报告对比方法论（A/B diff）**——升级前后/变更前后两份 AWR 的
+      程序化对比（表 E 已注"昨天好今天慢要历史对照"，无对比件）
+- [ ] **批量加载/导出性能**——COPY/bulk load 形态与调优，零覆盖
+- [ ] **备份窗口性能**——备份期间性能形态/限速策略（env-E 已见备份 fork 税，
+      备份侧资源控制知识未立）
+- 小锚收口（沿账）：向量化/SMP 执行体⚓ · MemoryContext 拦截函数 · HOT 判定
+  函数名 · autovacuum 锁不可得文案 · AuthenticationTimeout 别名 ·
+  cgroup v2 swappiness 细节 · fd-vfd/heap-tuple 的 6.0.0 正式树行号对齐
