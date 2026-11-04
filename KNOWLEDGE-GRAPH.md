@@ -34,13 +34,15 @@
   CPU↔Network 五通路/组合拳指纹——"症状层≠根因层"的路由枢纽）**、cpu、memory、
   io-storage、network、file-descriptors、tracing-tools
   （内核源码基线 7.1-rc4，生产 3.10 差异见各文件版本注记）
-- **救火操作层（troubleshooting/，9）**：startup-failure、connection-refused、
+- **救火操作层（troubleshooting/，10）**：startup-failure、connection-refused、
   crash-panic、blocking-live、resource-exhaustion、stack-reading、
   **page-lsn-mismatch（lsn check error/bigger than want set LSN：XLOG 解剖+
   双链回溯分叉定责）**、**crash-case-index（55 条内部缺陷库判例速查，栈指纹
   对号；含内网链接，公仓发布前排除）**、**cpu-sys-high（sys% 高四层分诊：
   静态形态→计数器对齐（/proc/interrupts CAL/TLB 行=广播 IPI 直接信号）→
-  perf 栈指纹判据表→定责对账；含 `-p` 三盲区与单进程大 mm fork 税放大器）**
+  perf 栈指纹判据表→定责对账；含 `-p` 三盲区与单进程大 mm fork 税放大器）**、
+  **oom-analysis（OOM 四型分诊：内核 killer/cgroup/库侧 53200/换页前驱，
+  每型触发条件+root cause 链+三源闭环对账）**
   （止损流程层：先保全后定位，机制一律引用 internals/linux 不复制；
   stack-reading=BACKTRACELOG/调用栈解读，机制挂 error-fatal）
 - **高可用层（ha/，7）**：replication-lag（三段分解出口）、

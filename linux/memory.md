@@ -198,7 +198,9 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
    （**若装了 numactl**），或确认线程亲和（taskset/cpuset）与内存节点一致——
    numactl 是 numactl 包，未装时上述 /sys、/proc 路径全可替代
 4. 内核自动迁移 `zone_reclaim_mode`/`numa_balancing` 会引入迁移抖动，DB
-   场景多关自动、手工定布局（版本注记：3.10 无 numa_balancing）
+   场景多关自动、手工定布局。**实测更正（2026-11-04）**：3.10.0-1160.el7
+   NUMA 平衡在跑（env-E 判例实测 do_numa_page/migrate_misplaced_page 栈），
+   早期"3.10 无 numa_balancing"注记作废——两口径以此为准统一
 
 ## 内存构成全景：meminfo 逐键判读（"哪里异常"对号表）
 

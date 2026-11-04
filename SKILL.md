@@ -43,7 +43,7 @@ description: VastBase（G100）数据库技能域。覆盖：AWR 报告（vb_too
 | 日志里的 BACKTRACELOG / 调用栈要解读 | `troubleshooting/stack-reading.md`（机制：`internals/error-fatal-mechanics.md` BACKTRACELOG 节） |
 | 崩溃 coredump / 宕机（先对已知缺陷） | `troubleshooting/crash-panic.md`（现场保全）+ `troubleshooting/crash-case-index.md`（栈指纹对 55 条已知缺陷族） |
 | Page LSN 报错（lsn check error / bigger than want set LSN） | `troubleshooting/page-lsn-mismatch.md`（双链回溯分叉定责） |
-| 内存耗尽 / OOM / 53200 | 形态 P7 → `troubleshooting/resource-exhaustion.md` + `linux/memory.md` |
+| 内存耗尽 / OOM / 53200 | 形态 P7 → `troubleshooting/oom-analysis.md`（四型分诊）+ `troubleshooting/resource-exhaustion.md`（应急）+ `linux/memory.md` |
 | 单条 SQL 慢 / 计划差 | `sql/sqlhc-analysis.md` |
 | 某等待事件 / 参数什么意思 | 知识查询（不过闸）：`wait-events.md` / `parameters.md` / `internals/` |
 
@@ -146,7 +146,7 @@ vastbase/
 | 版本谱系与官方文档站地图 | `admin/version-map.md` | LTS/DMR 版本对表、docs 站 API 抓取配方、已知问题无公开源的负向结论 |
 | ★OS 四域诊断树（跨层联判入口） | `linux/os-triage.md` | 任何"慢/卡/超时"的第一站：30 秒基线五列（us/sy/id/wa/st）→ A~G 支分诊；CPU↔Network 五通路；组合拳指纹表；util 禁令/await 分档/累计口径铁律都在这入口 |
 | Linux CPU 层（负载/软中断/切换/iowait 口径） | `linux/cpu.md` | 判读 OS 段 CPU 列：load 含 D 状态、iowait 双刃、ksoftirqd、nvcswch |
-| Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层 |
+| Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层；构成逐项哪里异常（meminfo 逐键+LRU 四链+构成×水位联动） |
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
 | Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清） |
 | Linux 文件描述符层（fdtable/rlimit/proc 渲染） | `linux/file-descriptors.md` | fd 分类树判读：pgsql_tmp 活跃落盘、version.cfg 泄漏、fd 逼近 rlimit |

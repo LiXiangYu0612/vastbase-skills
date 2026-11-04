@@ -89,7 +89,7 @@
 | OS 资源 | 运行队列 max/核 | >2 / >1；**守卫：busy max<70%=无饱和佐证不判**（瞬时尖峰） | P1 |
 | OS 资源 | 内存可用 min | ≤10 / ≤20 | P7 |
 | OS 资源 | swap 换出 max（页/min） | ≥10000 / ≥1000 | P7 |
-| OS 资源 | PageTables(全机)/VmPTE(主进程) | 明显超"映射量/512"即肥大；GB 级+未用大页=fork 税高危（当前需手工取数） | sys 高 |
+| OS 资源 | PageTables(全机)/VmPTE(主进程) | 明显超"映射量/512"即肥大；GB 级+未用大页=fork 税高危（PageTables 报告已有；VmPTE 手工取） | sys 高 |
 | OS 资源 | 数据盘 await max（按介质） | SSD>5 / HDD>20（util 永不判读） | P3/P4 |
 | OS 资源 | Cgroup 配额咬合（nr_throttled Δ） | Δ>0 即异常（digest 旗标） | P2 |
 | OS 资源 | cgroup memory.events OOM | 绝对值>0 即异常 | P7 |
@@ -161,6 +161,7 @@ Interrupts/s）、db_proc 的 Threads Δ 与 nvcswch、后台线程表关键线�
 | 计划/解析（P10） | — | Plan Time▲、Top SQL·Plan Time | 慢SQL桶节奏（硬解析等间隔） | 解析贵 vs 计划突变（配 query-plan-cache 判定链） | "昨天好今天慢"要历史报告对照 |
 | 临时落盘（P6） | TempFile fds▲、盘写压力 | Temp Spill 维、work_mem（参数组） | — | 哪些 SQL 落盘+值不值得调 work_mem（算子配额口径） | 口径不含聚合内排/HashAgg（metrics） |
 | 错误风暴（P12） | 多为果不是因 | 按族找影子（各族行） | 级别计数■+族计数▲ | 风暴源归责三分（监控盲区/应用/库侧） | WARNING 级慢性病要看趋势不看计数 |
+| sys 高·fork 税（2026-11-04 新域） | interrupts **CAL/TLB 行差分突增**（人工）、System Activity cs/forks 突增、PageTables（OS Memory 表） | **Forks/s 节奏**（≈WAL 段/作业周期）、后台线程表见 archiver 线程 fork、db_proc Threads/VmPTE | 归档成功时间戳与尖峰窗对齐、外部命令调用记录 | **触发条件=任何进程级 fork**（归档命令 gs_popen_security/备份工具/外部命令，周期=归档节奏）；**root cause=胖 mm fork 三税**：页表整拷（秒级停摆）+私有集 COW 风暴+全核 TLB 广播+子进程 exec 拆除 | 用户态发起函数未符号化（需 prod 二进制解 dwarf）；判例 env-E |
 
 ## 深入分析：这套检查项到底能诊断什么、能分析什么
 

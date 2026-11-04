@@ -30,6 +30,7 @@ implicitly-correlated metric 思想；分叉结论本身以各形态取证链既
 | P7 内存压力与上下文泄漏 | MemAvail 低/pswpout/水印【OS per-min】+ Shared Context Δ 涨【Database Memory】+ 会话大户【Max Session Memory】+ dmesg OOM + logrpt 53200 |
 | P8 表膨胀 / 清理不及 | dead tuples 榜【Object Statistics】+ 长事务 + AV worker_cnt=0/全忙 + vacuum 参数 |
 | P9 主备复制延迟 | lag 分解（Net/Fsync/Apply）【Replication】+ 槽 inactive + WAL 速率 + 备库 IO |
+| 表外形态：sys% 高（fork 税/IPI 广播）**不入 P 枚举**——四层分诊走 `../troubleshooting/cpu-sys-high.md`（2026-11-04 立，判例 env-E），形态闸遇 sys 高标签时按此分流，勿硬套 P1~P12 | |
 | P10 解析 / 计划开销 | Plan Time 维靠前且总占比>30%【SQL Statistics】+ Time Model parse/plan 阶段 |
 | P11 连接风暴 | DB Process TCP 状态 time-wait/close-wait 激增 + ListenDrops【Protocol Errors】+ logrpt too many clients |
 | P12 错误风暴 | logrpt 级别计数；PANIC 任一条最高优先（联动 `log-analysis.md`） |
@@ -85,6 +86,7 @@ implicitly-correlated metric 思想；分叉结论本身以各形态取证链既
 - 判定特征：DB CPU 高或 OS busy 高，r 队列持续>N
 - 取证：OS r vs 逻辑核数 → Time Model CPU_TIME/DB_TIME（方向）→ SQL ordered by
   CPU Time → Callstack 前台采样热点 → Load Profile executions（频次型还是单次贵）
+  → db_proc nvcswch（CPU 争抢实锤佐证，判读见 linux/cpu.md 切换节）
 - 定论：r>核数 + CPU 榜 SQL 占比高 + CPU_TIME/DB_TIME 高 = SQL 拖 CPU
 - 误判防范：CPU 高但 Iowait 也高 → 不是 CPU 不足，是 IO 慢拖高 sys（转形态 3）
 

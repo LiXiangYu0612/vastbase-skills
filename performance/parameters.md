@@ -33,7 +33,7 @@ GUC 的死旋钮清单（trace_locks 族 release 未注册等）见
 | 参数 | 判什么 | 方向 |
 |---|---|---|
 | work_mem | 排序/哈希**按算子（计划节点）**计的内存配额：同一查询内多个排序/哈希节点各占一份，单查询总量=配额×算子数（HashJoin 上下文 GB 级即实证）；Temp Spill 榜有 SQL 且偏小 → 落盘代价 | 调大是下策：先改 SQL/计划；安全核算用 **并发查询数×每查询算子数×配额，以 operatorMaxMem 弹性上限为准（work_mem 只是 operatorMemKB 估算的兜底，带估算配额时调 work_mem 可能不生效）**，以 Max Session Memory 实测单查询内存为锚；数据倾斜下大分组排序/哈希集超配额照旧落盘，调参救不了倾斜（机制细算见 `../internals/operator-memory.md`） |
-| shared_buffers | 命中率低+物理读高 且 机器有余量 | 参照 max_process_memory 配比，盲目调大挤会话内存 |
+| shared_buffers | 命中率低+物理读高 且 机器有余量 | 参照 max_process_memory 配比，盲目调大挤会话内存；★fork 税场景禁用"缩 shared_buffers"治病（负优化，见 linux/memory.md 页表节） |
 | random_page_cost | SSD 盘却按默认 4.0 估值 → 优化器不愿走索引（seq_scan 激增佐证） | SSD 建议调低（1.1 左右）；**先看 Rot 列确认介质**；HDD 别乱降 |
 | plan_cache_mode / behavior_compat_options | Plan Time 维霸榜、硬解析高 | 参数化/prepared 语句 |
 

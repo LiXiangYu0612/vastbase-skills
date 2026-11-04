@@ -66,4 +66,8 @@
 ## 知识网
 
 见 `../KNOWLEDGE-GRAPH.md`；备份边：归档产出（外部）→ restore 拉取（内核）
-→ 目标点 → 回放（同源）→ 终点动作。
+→ 目标点 → 回放（同源）→ 终点动作。**案例锚点**：
+`../cases/case-env-E-sys-spike-archiver-fork-202611.md`（归档命令经 archiver
+线程 fork+exec 执行，pgarch.cpp:853——单进程大 mm 下每次归档交 fork 三税：
+页表复制/COW 风暴/TLB 广播，sys 间歇冲高的周期源；分诊链
+`../troubleshooting/cpu-sys-high.md`）。
