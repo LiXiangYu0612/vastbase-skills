@@ -95,7 +95,7 @@
       Markdown，01 补齐目录承诺四节、02-09 断尾收口，4500→6435 行，三组写作
       agent 源码实读交付，验收四关过；原注记（Obsidian 母本同 500 行/gitee 404、
       全量件从未存在）作为不恢复原文的依据存档
-- [x] sql 六文件「来源」「版本注记」补齐；[ ] sqlhc "225s→0.45s" 出处⚓待补
+- [x] sql 六文件「来源」「版本注记」补齐；sqlhc "225s→0.45s" 断言降格为教学示例（出处不可考，撤锚——2026-11-05 用户令）
 - [x] sqlhc-integration 版本记法统一 V3.0.9（PSU1）
 - [x] cases 命名：envC→env-C；env-odbc 保留（代号位作主题描述符，特例）
 - [x] cpu.md 判读速查标题；os-triage/file-descriptors 常见错误；flush-checkpoint 分立
