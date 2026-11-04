@@ -25,20 +25,22 @@
 ## max_files_per_process 生效链（源码定论）
 
 - GUC 定义：默认 **1000**、最小 25、PGC_POSTMASTER（重启生效）；描述为
-  "for each server process"（guc.cpp，master 树 :1954-1961）
+  "for each server process"（guc.cpp:2290-2302，6.0.0 树）
 - **换算点唯一**：`set_max_safe_fds()` 全源码树只在 `PostmasterMain`
-  （postmaster.cpp:2003）调用一次：
+  （postmaster.cpp:2759；PostmasterMain 定义 :1825）调用一次：
   `max_safe_fds = Min(实测进程可用 fd, max_files_per_process − 已打开) − NUM_RESERVED_FDS`
-  （fd.cpp:713-750）——此后 postmaster 主线程的该值不再变
+  （fd.cpp:710-765，Min 换算 :724、NUM_RESERVED_FDS :729）——此后
+  postmaster 主线程的该值不再变
 - **线程继承（关键链，2026-10-30 复核定论）**：每个线程（业务 worker 与
   pagewriter/autovacuum/walwriter 等全部后台线程）创建时走
   `initialize_util_thread` / `initialize_worker_thread`（postmaster.cpp:
-  12775/:12818）→ `save_backend_variables` 把 **postmaster 当前 t_thrd 快照**
-  （含 GUC 派生的 max_safe_fds，:9890）写进线程参数 save_para → 线程入口
-  `GaussDbThreadMain`（:12019）→ `PortInitialize`（:7910）→
-  `read_backend_variables`（:10004）→ `restore_backend_variables`（:10012）
-  把 `t_thrd.storage_cxt.max_safe_fds = param->max_safe_fds`（:10049）恢复进
-  本线程。`knl_t_storage_init` 的 **32 只是线程骨架初值**（knl_thread.cpp:1402），
+  14869/:14920）→ `save_backend_variables`（:11785）把 **postmaster 当前
+  t_thrd 快照**（含 GUC 派生的 max_safe_fds，:11820）写进线程参数
+  save_para → 线程入口 `GaussDbThreadMain`（:14027）→ `PortInitialize`
+  （:9465）→ `read_backend_variables`（:11934）→
+  `restore_backend_variables`（:11942）把
+  `t_thrd.storage_cxt.max_safe_fds = param->max_safe_fds`（:11974）恢复进
+  本线程。`knl_t_storage_init` 的 **32 只是线程骨架初值**（knl_thread.cpp:1450），
   在任何 fd 使用前就被上述恢复覆盖——**不是运行时闸**
 - 推论：**改 GUC（重启）会改所有线程的 VFD 预算**——线程预算 = postmaster
   启动时刻的 Min(实测可用 fd, GUC − 已开) − 预留。~~G100 交付值 100000~~
@@ -51,17 +53,18 @@
   上限（20000），并以 fd 抖动（open/close 速率）为观察项；判读见本文件
   "EMFILE/VFD 抖动分诊"节
 - 第二生效点：Shared FileId hash 上限 = `Max(max_files_per_process,
-  max_userdatafiles=8192−1000)`（fd.cpp:302/:324）——共享文件 id 表容量
+  max_userdatafiles=8192−1000)`（fd.cpp:292-293/:315；8192−1000 骨架初值
+  在 knl_thread.cpp:1451）——共享文件 id 表容量
 
 ## VFD 账本口径（nfile 在哪记账）
 
-`GetVfdNfile()`（knl_localsysdbcache.cpp:435-442）：
+`GetVfdNfile()`（knl_localsysdbcache.cpp:435-441）：
 
 - 开本地系统缓存（LSC）时 = `t_thrd.lsc_cxt.lsc->nfile`——**线程私有**计数
 - 否则 = `u_sess->storage_cxt.nfile`——**会话级**计数
 
 即 VFD 层的账本 granularity 是线程/会话，不是进程；换出检查
-`ReleaseLruFiles`（fd.cpp:1016-1021）用当前线程自己的 max_safe_fds 对
+`ReleaseLruFiles`（fd.cpp:1056-1062）用当前线程自己的 max_safe_fds 对
 当前账本计数。
 
 ## 超限三命运（判读速查）
@@ -90,10 +93,12 @@
 
 ## 版本注记
 
-- 行号基于 openGauss master 快照（本地 gdb&stap 树，2026-10-30 精读）；
-  6.0.0 正式树 src/gausskernel 不完整未能逐行对齐，结构与函数名同源，
-  **行号在正式版可能有偏移**；VastBase G100（V3 档）内核分支未逐行验证，
-  机制同源推断〔标注为推断〕
+- 2026-11-05 行号对齐至 6.0.0 树（原 master 树）：正文/来源共 20 处行号
+  引用逐个 grep 实取重写；全部锚点在本树存在，函数结构与调用链零变化，
+  漂移 −3~+2102 行（GetVfdNfile 无漂移）；此前"6.0.0 正式树
+  src/gausskernel 不完整"的记录对本次所用 /mnt/d 树不成立（fd.cpp/
+  postmaster.cpp/knl_thread.cpp/knl_localsysdbcache.cpp 均完整在树）；
+  VastBase G100（V3 档）内核分支未逐行验证，机制同源推断〔标注为推断〕
 - ★复核教训（2026-10-30，用户令"再仔细看看"）：首版曾从"set_max_safe_fds
   唯一调用点 + knl_t_storage_init 默认 32"推"业务/后台线程恒 32、调 GUC
   对线程无效"——**漏了线程创建的 save/restore_backend_variables 快照链**
@@ -104,14 +109,18 @@
 
 ## 来源
 
-- openGauss master 树源码精读（2026-10-30）：fd.cpp（set_max_safe_fds/
-  ReleaseLruFiles/OpenTransientFile/Shared FileId）、postmaster.cpp
-  （PostmasterMain:2003 调用、save_backend_variables:9852/:9890、
-  restore_backend_variables:10012/:10049、read_backend_variables:10004、
-  initialize_util_thread:12775、initialize_worker_thread:12818、
-  GaussDbThreadMain:12019/:12082、PortInitialize:7910/:7929、
-  initialize_worker_thread 调用点:7585）、knl_thread.cpp:1402（骨架初值）、
-  knl_localsysdbcache.cpp（GetVfdNfile）、guc.cpp（GUC 定义）
+- openGauss 6.0.0 树（2026-10-30 master 树精读，2026-11-05 行号对齐）：
+  fd.cpp（set_max_safe_fds:710-765、ReleaseLruFiles:1056-1062、
+  DataFileIdCacheSize Max:292-293、InitDataFileIdCache hash:315）、
+  postmaster.cpp（PostmasterMain:1825 内 set_max_safe_fds 调用:2759、
+  save_backend_variables:11785/快照:11820、restore_backend_variables:
+  11942/恢复:11974、read_backend_variables:11934、initialize_util_thread:
+  14869、initialize_worker_thread:14920、GaussDbThreadMain:14027/
+  PortInitialize 调用:14098、PortInitialize:9465/read_backend_variables
+  调用:9484、BackendStartup:9086 内 initialize_worker_thread 调用点:9137）、
+  knl_thread.cpp:1450（骨架初值 32；max_userdatafiles=8192−1000 初值
+  :1451）、knl_localsysdbcache.cpp:435-441（GetVfdNfile）、
+  guc.cpp:2290-2302（GUC 定义）
 - 交叉验证：troubleshooting/resource-exhaustion.md 的 EMFILE 现场判据；
   env-T 实例 postmaster `Max open files = 1000000/1000000`、fd 实测 135
 

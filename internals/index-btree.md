@@ -34,8 +34,19 @@
 - 语义（社区 Postgres 同源）：UPDATE **未改任何索引列**且旧元组所在页放得下
   新版本 → **HOT 更新**：所有索引都不写新条目，只堆内链；否则每个索引
   都要插新条目（写放大 ×索引数）
-- openGauss 基线 heapam 中判定函数名未定位〔⚓——机制语义与社区一致，
-  遇到再锚〕
+- 判定函数已锚〔✅ 2026-11-05 源码定位〕：`HeapSatisfiesHOTUpdate`
+  （heapam.cpp:6029，static；heap_update :5123 在拿 buffer 排他锁后调用），
+  即社区 PG13+ HeapDetermineColumnsInfo 的 openGauss 同源异名实现。
+  逐列比对的子程序 `heap_tuple_attr_equals`（:5937）：heap_getattr 取新旧
+  值 → datumIsEqual 二进制比较（字典压缩旧元组走 heap_getattr_with_dict
+  :5981-5987；NULL 状态先比，系统列只认 OID/tableOID 等）。单次遍历同时
+  产出三标志 satisfies_hot/satisfies_key/satisfies_id（hot⊇key⊇id 属性
+  位图超集递进，:6048-6052）。**HOT 最终成立双条件**（heap_update
+  :5670-5681）：①satisfies_hot=true——hot_attrs（RelationGetIndexAttrBitmap
+  INDEX_ATTR_BITMAP_ALL，:5072-5081）覆盖的全部索引列未变；②新元组仍落
+  旧页（newbuf==buffer 且非 HEAP_INSERT_SKIP_FSM）；跨页则 PageSetFull
+  留 prune/defrag 提示（:5680）。成立后 :5725-5733 打标：旧元组
+  HEAP_HOT_UPDATED + 新元组 HEAP_ONLY_TUPLE
 - 判读：同表更新频繁 + 索引数多 + 无 HOT 条件被破坏（改了索引列/页满）→
   索引侧 IO 与 WAL 同涨——**先核有没有"索引列被无谓更新"**（如触发器
   改 update_time 而它带索引）
@@ -66,7 +77,8 @@
 ## 版本注记
 
 - 基线 openGauss 6.0.0（G100 V3 Build 8）；dedup/posting 为该档具备
-  （社区 PG13+ 引入族）；HOT 判定函数名未锚⚓
+  （社区 PG13+ 引入族）；HOT 判定函数已锚〔✅ 2026-11-05〕：
+  HeapSatisfiesHOTUpdate（heapam.cpp:6029）
 
 ## 来源
 
@@ -74,6 +86,11 @@
   _bt_findsplitloc 全函数头部与空间预算）、:666,906（P_RIGHTMOST 路径）、
   nbtree/nbtdedup.cpp:22-59（posting 构建）、nbtree/nbtpage.cpp:44
   （_bt_mark_page_halfdead 两段式）；contrib 无 pgstattuple（负向检索）
+- HOT 判定精读（2026-11-05）：heapam.cpp:6029-6120（HeapSatisfiesHOTUpdate
+  全函数：三标志超集递进）、:5937-6027（heap_tuple_attr_equals 全函数：
+  压缩字典分支/系统列白名单/datumIsEqual）、:5123（heap_update 调用点，
+  LockBuffer 之后）、:5072-5081（索引属性位图三取）、:5670-5681（页内
+  双条件判定）、:5725-5733（HEAP_HOT_UPDATED/HEAP_ONLY_TUPLE 打标）
 - 联动：`mvcc-visibility.md`（OldestXmin）、`autovacuum.md`（删页驱动）、
   `buffer-manager.md`（btree 分裂特例行）
 

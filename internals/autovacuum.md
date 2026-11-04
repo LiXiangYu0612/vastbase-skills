@@ -50,8 +50,19 @@ PID"，allow_autovacuum_cancel 控制）——vacuum 让路重跑，业务不等
   循环内），所以 analyze 慢同样可能是限流而非表大
 - naptime 轮询周期内每库派 worker（autovacuum_max_workers 并发上限）
 - 表级跳过日志实锤=**权限族文案** `skipping "<表>" --- only … can vacuum it`
-  （vacuum.cpp:2055-2093 五种变体）+ 分区跳过（autovacuum.cpp:2143）；锁不可
-  得类跳过文案未抓到〔⚓〕
+  （vacuum.cpp:2055-2093 五种变体）+ 分区跳过（autovacuum.cpp:2143）；
+  **锁不可得族文案已抓**〔✅ 2026-11-05〕：
+  `skipping vacuum of "<表>" --- lock not available`（vacuum.cpp:2285，
+  vacuum_rel :1880 内）与 `skipping analyze of "<表>" --- lock not available`
+  （analyze.cpp:324，analyze_get_relation :291 内）。触发点=NOWAIT 条件锁
+  失败：autovacuum worker 组语句时带 VACOPT_NOWAIT（autovacuum.cpp:3324），
+  走 `ConditionalLockRelationOid(relid, lmode)`（vacuum.cpp:2201 /
+  analyze.cpp:309），分区再叠 `ConditionalLockPartition`（vacuum.cpp:2226+
+  分区/子分区/主分区三分支）；锁拿不到即 GetLock=false → 该表本轮跳过。
+  **出声条件**：IsAutoVacuumWorkerProcess() 且 log_autovacuum_min_duration≥0
+  （否则静默跳）；errcode=ERRCODE_LOCK_NOT_AVAILABLE；级别：vacuum 侧
+  VACOPT_VERBOSE→VERBOSEMESSAGE 否则 LOG，analyze 侧恒 LOG。非 worker
+  进程拿不到锁不出此声
 
 ## AWR 判读映射
 
@@ -84,7 +95,12 @@ PID"，allow_autovacuum_cancel 控制）——vacuum 让路重跑，业务不等
   default_statistics_target 负值关停 autoanalyze（与官方文档一致；
   阈值公式与 target 无关已核）。env-T 负值红绿实测未完成（ALTER SYSTEM 后
   漏 pg_reload_conf，worker 未看到 -10，结果作废；用户令停测，以源码+文档双源定论）
-- ⚓：锁不可得类跳过文案
+- 2026-11-05 四次补读：optimizer/commands/vacuum.cpp:1880,2201-2286
+  （vacuum_rel 条件锁三分支与 !GetLock 出声）、analyze.cpp:291-326
+  （analyze_get_relation 条件锁与出声）、process/postmaster/
+  autovacuum.cpp:3324（worker 语句带 VACOPT_NOWAIT）
+- ✅ 收锚（2026-11-05）：锁不可得跳过文案=vacuum.cpp:2285 /
+  analyze.cpp:324（`skipping … --- lock not available` 族，详见限流节）
 
 ## 知识网
 

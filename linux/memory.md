@@ -64,6 +64,20 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   （sc_swappiness → mem_cgroup_swappiness，:244-248）——独立值仅 cgroup
   **v1** 的 memory.swappiness 旋钮（memcontrol-v1.c:1988 为其 write 侧），
   cgroup v2 已移除该旋钮
+- **cgroup v2 终局语义**（2026-11-05 网络取证，torvalds master，"cgroup v2
+  swappiness 语义细节"⚓收口）：
+  - **无文件**：v2 memory 控制器接口表 memory_files[]（mm/memcontrol.c）里
+    没有 swappiness 项——v2 没有 memory.swappiness 旋钮
+  - **机制侧实证**：`mem_cgroup_swappiness()`（mm/swap.h）只在
+    `!cgroup_subsys_on_dfl()`（=v1 挂载）且非 root memcg 时读 per-memcg 值；
+    **v2 下恒返回全局 vm_swappiness**（per-memcg 字段本身也圈在
+    CONFIG_MEMCG_V1 编译开关内，include/linux/memcontrol.h）——v2 里 memcg
+    回收的比例权重没有第二套
+  - **唯一替代物**＝`memory.reclaim` 的嵌套键 `swappiness=`（range
+    [0-200] 或 max=只收匿名页）——只对**本次写触发的那轮回收**生效，
+    非持久 per-cgroup 旋钮；**6.11 才引入**（6.10 及以前连这个键都没有，
+    Documentation/admin-guide/cgroup-v2.rst 逐版本比对）。老 v2 内核上
+    memcg 级只剩全局 vm.swappiness 管比例 + memory.swap.max/swap.high 管量
 - DB 惯例 vm.swappiness=1~10（**实践惯例，非源码结论**）：目标是让 file 页
   （页缓存可快速重生）优先让路，少碰匿名页；**=0 不是"禁用 swap"**，极端
   匿名压力下照样换出甚至先 OOM
@@ -312,6 +326,17 @@ VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 Vm
   mm/huge_memory.c:59；补锚：mm/memcontrol-v1.c:1988（memory.swappiness
   write 侧，v1 专属）
 - 生产内核版本实测：env-A uname -r（2026-10-25）
+- cgroup v2 swappiness 网络取证（2026-11-05，raw.githubusercontent.com
+  torvalds/linux master 抓取，本机无内核源码树）：
+  mm/swap.h（mem_cgroup_swappiness：v1 才读 per-memcg 值）、
+  mm/memcontrol.c（v2 memory_files[] 无 swappiness）、
+  mm/memcontrol-v1.c（swappiness 只在 mem_cgroup_legacy_files）、
+  include/linux/memcontrol.h（字段圈 CONFIG_MEMCG_V1）、
+  Documentation/admin-guide/cgroup-v2.rst（memory.reclaim swappiness= 键；
+  v6.10/v6.6/v6.1 无此键、v6.11 起有，文档与 mm/memcontrol.c 代码双侧比对：
+  v6.11 起才有 MEMORY_RECLAIM_SWAPPINESS 解析项）——
+  https://raw.githubusercontent.com/torvalds/linux/master/mm/swap.h 、
+  https://raw.githubusercontent.com/torvalds/linux/master/Documentation/admin-guide/cgroup-v2.rst
 - 《Linux 性能优化实战》内存篇作主题框架参照（口径以源码为准）
 
 ## 知识网

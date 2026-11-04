@@ -62,11 +62,58 @@ Sort/Hash（operator-memory.md）。**推论**：AWR 里"调 work_mem 不生效"
 - `tuplestore_begin_heap(…, operator_mem, max_mem, …, SET_DOP(dop))`（:54）——
   物化=配额内的输入缓存（给无参数化 NL 内层兜底、CTE 物化等）
 
-## SMP/stream（向量化路径）
+## SMP/stream 与向量化算子族（2026-11-05 结构级实锚；深读留待专项）
 
-- 本基线 stream 节点在 **vecexecutor/vecnode/vecstream.cpp**——SMP 并行在
-  向量化执行器路径上（dop 分摊配额即 SET_NODEMEM 的 dop 除法，见
-  `operator-memory.md` §3）；调度细节⚓（目录级）
+**向量化执行体**（src/gausskernel/runtime/vecexecutor/）——形态/入口/代表循环：
+
+- **算子族形态**：`vecnode/` 40+ 个 Vec 前缀文件（vecagg/vechashagg/
+  vechashjoin/vecnestloop/vecmergejoin/vecsort/vecmaterial/vecresult/vecgroup/
+  vecwindowagg/veclimit/vecunique/vecsetop/vecappend/vecpartiterator/
+  vecmodifytable/vecsubplan/vecsubqueryscan/vecstream/vecremotequery + 列存
+  扫描族 veccstore*.cpp/vectsstorescan.cpp）；配套 `vecprimitive/`（向量化
+  原语函数）与 `vectorsonic/`（sonic 省内存 hash agg/join）。行↔向量桥 =
+  vecrowtovector.cpp（ExecRowToVec，双模式 Batch/Tuple）/vectortorow.cpp
+  （ExecVecToRow）
+- **入口分发**：`VectorEngine()`（vecexecutor.cpp）→ 函数指针表
+  `VectorEngineRunner[GetRunnerIdx(nodeTag(node))](node)`——tag 落在
+  T_VecStartState..T_VecEndState 区间即命中，未列 tag 落
+  UnSupportVectorRunner 报错；Init 侧同族分发在 execProcnode.cpp
+  `ExecInitNodeByType()` 的 T_VecAgg→ExecInitVecAggregation 等 case；
+  顶层驱动 = execMain.cpp `ExecuteVectorizedPlan()` 逐批调 VectorEngine
+  （每次调用返回一个 VectorBatch）
+- **代表算子执行循环**：`ExecVecAggregation()`（vecagg.cpp）——首调按
+  aggstrategy 惰性建 runner（AGG_PLAIN→PlainAggRunner；AGG_HASHED→
+  HashAggRunner，is_sonichash 则 SonicHashAgg；AGG_SORTED→SortAggRunner），
+  此后每次调用吐一批（DO_AGGEGATION 宏 = BaseAggRunner::Run，定义在
+  vecagg.h）。批次状态机样本 = vechashagg.cpp `HashAggRunner::Run()`：
+  按 m_runState 推进 AGG_PREPARE（GetHashSource 取源）→ AGG_BUILD（Build
+  逐批入哈希表）→ AGG_FETCH 出批——"一次调用吐一批、内部状态机推进"即
+  向量化算子循环骨架
+
+**SMP 执行侧**（src/gausskernel/process/stream/）——计划侧 Stream/VecStream
+节点（带 smpDesc：consumer×producer dop）在执行期的衔接链：
+
+- **启动链**（execMain.cpp `ExecutorStart` 两分支）：① `BuildStreamFlow`
+  （execStream.cpp）建 StreamNodeGroup（stream_cxt.global_obj）、遍历计划树
+  成对建 StreamProducer/StreamConsumer（配对键 StreamKey=queryId+planNodeId+
+  smpIdentifier）、`StreamNodeGroup::Init(threadNum)`（streamCore.cpp）按
+  dop 收账；② `StartUpStreamInParallel` → `StartupStreamThread`
+  （execStream.cpp，仅 Top Consumer 拉线程）逐 producer 调
+  `StreamNodeGroup::initStreamThread`（streamCore.cpp）→
+  `ApplyStreamThread`（streamMain.cpp：取 stream 工作线程，取不到则
+  initialize_util_thread(STREAM_WORKER) 起新线程）→ 线程入口 `StreamMain()`
+  （streamMain.cpp）→ `execute_stream_plan(producer)` 在 producer 侧跑子计划
+  （producer 本身=一个 mini executor）
+- **消费衔接**：`ExecInitStream`（execStream.cpp）→ `BuildStreamRuntime`
+  挂 consumer 与扫描回调；`ExecStream` 首次拉取 → `StreamPrepareRequest`
+  （execStream.cpp）向 producer 发请求开流。数据回流两路：跨节点走 libcomm
+  （`ScanStreamByLibcomm` + GetTupleFromConnBuffer 反序列化）；同节点 SMP
+  （STREAM_IS_LOCAL_NODE(smpDesc.distriType)）走内存直传 `ScanMemoryStream`
+  ——dop 分摊配额即 SET_NODEMEM 的 dop 除法（`operator-memory.md` §3）
+- **两条消费路径**：行路径 = execStream.cpp `ExecStream`；向量路径 =
+  vecstream.cpp `ExecInitVecStream`/`ExecVecStream`（同一
+  StreamPrepareRequest 链，StreamScan 直接收 VectorBatch）——SMP 不绑死
+  向量化执行器
 
 ## AWR 判读映射
 
@@ -94,7 +141,15 @@ Sort/Hash（operator-memory.md）。**推论**：AWR 里"调 work_mem 不生效"
   1144-1248,1601（策略与配额接线）、nodeWindowAgg.cpp:1818-1906（三向游标）、
   nodeMaterial.cpp:54-77（tuplestore+配额）、vecexecutor/vecnode/vecstream.cpp
   （SMP 位置）
-- ⚓：SMP 调度细节、向量化算子族差异
+- 2026-11-05 结构级实锚（SMP/向量化，文件+函数级，未逐行深读）：
+  vecexecutor.cpp（VectorEngine/VectorEngineRunner/GetRunnerIdx）、
+  execProcnode.cpp ExecInitNodeByType、execMain.cpp
+  ExecuteVectorizedPlan、vecagg.cpp ExecVecAggregation、vechashagg.cpp
+  HashAggRunner::Run、execStream.cpp（BuildStreamFlow/StartUpStreamInParallel/
+  StartupStreamThread/ExecInitStream/ExecStream/StreamPrepareRequest）、
+  streamCore.cpp StreamNodeGroup::Init/initStreamThread、streamMain.cpp
+  （ApplyStreamThread/StreamMain/execute_stream_plan）、vecstream.cpp
+  ExecVecStream；深读（sonic 落盘/SMP 数据重分布粒度/流控/取消联动）留待专项
 
 ## 知识网
 

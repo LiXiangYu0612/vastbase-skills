@@ -28,13 +28,13 @@
 | 主题 | 状态 | 文件 |
 |---|---|---|
 | 管线骨架（parse→rewrite→plan→exec） | ✅入口/算子级（planner:380→standard_planner:530→make_one_rel allpaths:186；exec 段算子级=executor-operators；parse 段判读价值低不展开） | query-pipeline.md + executor-operators.md |
-| 执行器算子（NL/MA/AGG/Window/Material） | ✅深（NESTLOOP_PARAM 执行本体/MJ 状态机/Agg 四策略+配额接线/Window 三向游标/Material tuplestore 配额；⚓=SMP 调度与向量化算子族） | executor-operators.md |
+| 执行器算子（NL/MA/AGG/Window/Material） | ✅深（NESTLOOP_PARAM 执行本体/MJ 状态机/Agg 四策略+配额接线/Window 三向游标/Material tuplestore 配额；SMP/向量化 2026-11-05 结构级实锚，深读待专项） | executor-operators.md |
 | rewrite_rule/sql_beta_feature 位表 | ✅表级；消费点：LAZY_AGG→planner.cpp、MAGIC_SET→subselect.cpp、PARTIAL_PUSH→pgxcplan_single.cpp；余位⚓ | query-rewrite.md |
 | PBE 计划缓存 | ✅深（14 级瀑布；11-03 补：10 参数全景/集中式 pbe_optimization 无条件退化/batch bind 强制开/C/G 观测配方 client_min_messages=debug2/plan_cache_type_validation；自适应分岔另立专篇） | query-plan-cache.md |
 | 自适应计划选择（gplanmgr/PMGR） | ✅深（11-03 新立：五步框架/CachedPlanInfo 结构/CI 学习/淘汰赛/启用七闸/Choose_adaptive_gplan hint；env-T 全生命周期实测） | adaptive-plan-mgr.md |
 | 统计→选择率 | ✅深；采样：块=Algorithm S、行=蓄水池替换、MCV 阈值+等频直方图构建全深（2026-10-25 二次） | stats-to-cost.md |
 | plan 生成（枚举/DP/geqo/参数化） | ✅深（2026-11-05 references 05 补齐：add_path 四维竞争/FUZZY 因子/geqo 全链/索引路径生成） | query-pipeline.md + sql/references/05 |
-| opfusion / 向量化 / SMP | opfusion ✅深（11-03 成专篇：参数族/双入口/bypass 分型/观测配方；向量化与 SMP 仍 ⚓ 骨架级） | internals/opfusion.md + query-pipeline.md |
+| opfusion / 向量化 / SMP | opfusion ✅深（11-03 成专篇：参数族/双入口/bypass 分型/观测配方）；向量化与 SMP 结构级已锚（2026-11-05），深读待专项 | internals/opfusion.md + executor-operators.md |
 | 代价模型/SQLHC 分析/查询转换深潜 | ✅已并入（原独立技能 8 文件迁至 sql/：deep 56KB+sqlhc×3+usage+quickref+references 深潜系列；2026-10-26 用户令"完全并入删源"） | sql/optimizer-deep.md 等 6 件 |
 
 ## 运维域
@@ -50,7 +50,7 @@
 | 双写机制（DW 文件/truncate/恢复） | ✅深（2026-11-04 内部文档+源码核实 double_write.cpp 全锚；PR 6671 truncate 竞态/single 恢复无版本校验取舍入档；⚓段页式区） | internals/double-write.md |
 | MergeJoin 估价风险 | ✅深（NOW 快照扫索引+ProcArrayLock 争用两实战形态；309 快照改型版本演进；costsize/selfuncs 锚） | internals/mergejoin-cost-estimation-risk.md |
 | 词法/语法解析（scan.l/gram.y） | ✅文档级（XS-DB-64 入库：移进规约/冲突排查配方 bison -v；OG 路径差异记录；深入判读价值有限维持骨架级） | internals/query-pipeline.md |
-| 连接生命周期（postmaster/准入闸/认证/会话初始化） | ✅深（CAC_TOOMANY/OOM 拒绝文案、盐预生成、每连接一线程、启动包/SSL 重入；ClientAuthentication auth.cpp:350 结构+基线无认证超时 GUC 负向实锤；AuthenticationTimeout 别名是否存在仍开⚓；compat_oracle_txn_control 只读 SELECT 事务+ODBC 驱动默认差异【VastBase 定制 GUC 开源基线无】） | internals/connection-lifecycle.md |
+| 连接生命周期（postmaster/准入闸/认证/会话初始化） | ✅深（CAC_TOOMANY/OOM 拒绝文案、盐预生成、每连接一线程、启动包/SSL 重入；ClientAuthentication auth.cpp:350 结构；★2026-11-05 翻案：authentication_timeout **存在**（guc_security.cpp:439，默认 60s，执行点 postinit.cpp:301）——旧"无此 GUC"负向系六分表漏检（只查了 guc.cpp）；37 项 timeout 类 GUC 穷查无一作用于建连/认证/SSL 层；compat_oracle_txn_control 只读 SELECT 事务+ODBC 驱动默认差异【VastBase 定制 GUC 开源基线无】） | internals/connection-lifecycle.md |
 | 主备延迟诊断（lag 三段分解） | ✅初版（操作层合成，机制底座=internals 三文件+linux 两文件） | ha/replication-lag.md |
 | 流复制架构/切换/脑裂 | ✅初版源码先行（四位点/term 任期/most_available_sync 窗口/DCF 目录实锚；recovery_target 通道⚓；**VastBase 内核+CM 源码不可得→开源 OG 内核+CM 近似基线** gitee.com/opengauss/CM；同步语义表/级联/延迟回放/build 约束/vb_ctl query 已并入 replication-architecture） | ha/ 三件 |
 | HAS+DCS 高可用组件 | ✅文档级（第11课课件入库：四模块/选举/pause/DCS 故障两形态；待实测对账⚓） | ha/has-dcs-architecture.md |
@@ -84,7 +84,7 @@
 ## 欠账速查（⚓→✅ 的升级线索）
 
 六笔主欠账 + 七笔边角锚点 2026-10-25 全部收口（含两个**负向实锤**：
-候选链双计数器无视图出口、基线无认证超时 GUC）。仍开的小锚：锁不可得
+候选链双计数器无视图出口——其中"基线无认证超时 GUC"已于 2026-11-05 翻案为存在，见连接生命周期行）。仍开的小锚：锁不可得
 跳过文案（autovacuum）· AuthenticationTimeout 是否以别名存在
 （connection-lifecycle）· cgroup v2 swappiness 语义细节（linux/memory）
 
@@ -100,7 +100,9 @@
 - [x] cases 命名：envC→env-C；env-odbc 保留（代号位作主题描述符，特例）
 - [x] cpu.md 判读速查标题；os-triage/file-descriptors 常见错误；flush-checkpoint 分立
 - [x] read-write-splitting 内部课件出仓（gitignore+留盘+路由行加注）
-- [x] OOM B 型口径定稿（vb_tool 实采 cgroup v2）；[ ] env-E VmPTE 取数⚓
+- [x] OOM B 型口径定稿（vb_tool 实采 cgroup v2）；[x] env-E VmPTE 总量确认 ≈5GB
+      （现场实查 2026-11-05）；[ ] 成分拆解仍开（pmap 占比→定大页 vs
+      archive_dest/posix_spawn 优先级）
 
 ## 性能优化缺口盘点（2026-11-05 用户问"还缺什么"，全量对账后立账）
 

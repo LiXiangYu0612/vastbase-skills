@@ -38,6 +38,29 @@ work_mem 可能根本不生效（优化器估算优先）；为什么调参救�
    53200（ERRCODE_OUT_OF_LOGICAL_MEMORY，分配层统一拦截）；
    它管"整个进程还能不能分配"，与算子 spill 决策（"这个算子要不要写临时文件"）
    是两层。调大 work_mem 挤爆的是这一层。
+   拦截链已锚〔✅ 2026-11-05 源码定位，四层〕：palloc/palloc0/repalloc →
+   mcxt.cpp `MemoryAllocFromContext`（:1021）与 `MemoryContextAlloc*Debug`/
+   `repalloc*Debug` 家族（同码同文案九处：1036/1098/1148/1208/1427/1470/
+   1516/1562/1634）→ `AllocSetAlloc`（aset.cpp:808，需新块时 :857 调
+   func->malloc）→ `MemoryProtectFunctions::gs_memprot_malloc<MEM_SESS/
+   MEM_THRD/MEM_SHRD>`（memprot.cpp:825；函数表 Session/Generic/
+   SharedFunctions :80-90）→ `memTracker_ReserveMem<type>`（:650，1MB
+   chunk 记账）→ `memTracker_ReserveMemChunks<type>`（:577：原子加
+   `processMemInChunks` → `MemoryIsNotEnough(total, maxChunksPerProcess)`
+   :545 判超 → 回滚计数返回 false）→ gs_memprot_malloc 返 NULL → mcxt 层
+   ereport "memory is temporarily unavailable"。
+   **触发条件**：`currentMem ≥ maxChunksPerProcess + beyondChunk` 才硬拒
+   （memprot.cpp:566；maxMem~maxMem+beyondChunk 之间放行但记越界块）；
+   maxChunksPerProcess =（max_process_memory − cstore_buffers − 共享内存
+   等可用额 − WAL/保留项）（:998/:980）。**逃生门**：disable_memory_protect
+   =on、critical section 内、postmaster、中止事务中一律放行（:549-557）。
+   副拦截点：`MemoryContextCheckMaxSize`（mcxt.cpp:971）管上下文级
+   totalSpace>maxSpaceSize，同码异文案（"beyond to the memory context …
+   limitation"），MEMORY_CONTEXT_CHECKING 于 pg_config_manual.h:268 无条件
+   定义=全构建生效。**码值注意**：ERRCODE_OUT_OF_LOGICAL_MEMORY 在
+   errcodes.txt:562 是 openGauss 扩展码 **YY006**；标准 **53200 对应
+   ERRCODE_OUT_OF_MEMORY**（mcxt.cpp:901，仅上下文节点 malloc 失败的
+   "out of memory" 路径）——日志判读时码值与文案须成对核。
 
 ## 源码链路（openGauss 6.0.0 基线，行号会漂以函数名为锚）
 
@@ -170,6 +193,12 @@ Max Session Memory 实测值为锚反推每查询算子数。
 - `include/workload/memctl.h:36`、`include/executor/hashjoin.h:99`、
   `include/nodes/relation.h:188`
 - 实测样本：2026-10-21 现场 AWR（HashJoin 4.39 GB 上下文 / 75 GB 每小时 temp）
+- 分配层拦截链精读（2026-11-05）：common/backend/utils/mmgr/
+  mcxt.cpp:971,1021-1036（MemoryAllocFromContext/CheckMaxSize）、
+  aset.cpp:808,857（AllocSetAlloc 新块申请）、memprot.cpp:80-90,545-572
+  （MemoryIsNotEnough）,:577-649（ReserveMemChunks）,:650-716（ReserveMem）,
+  :825-843（gs_memprot_malloc）、:980,998（maxChunksPerProcess 推导）、
+  errcodes.txt:415,562（53200 vs YY006 码值分离）
 
 ## 知识网
 

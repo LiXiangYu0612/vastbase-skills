@@ -65,6 +65,26 @@ BackendStartup 的 `canAcceptConnections` 闸（postmaster.cpp:9086-9135，深�
   （2026-10-25 真机；此前按 guc.cpp 检索判"无此 GUC"是**错的**——其定义
   不在 guc.cpp，该负向结论已被实测推翻并修正）——半开认证连接有库层
   超时兜底
+- **别名穷查终局（⚓收口，2026-11-05，6.0.0 树 grep 实取）**：
+  AuthenticationTimeout **不是别名——它直接存在**。GUC 名
+  `authentication_timeout` 注册于 **misc/guc/guc_security.cpp:439-452**
+  （类别 PGC_SIGHUP、组 CONN_AUTH_SECURITY、默认 **60s**=env-A 实测
+  1min 吻合、范围 1–600s；变量行 :446，声明 knl_session_attr_security.h:51）。
+  此前检索落空的正因：6.0.0 树 GUC 表已拆为 guc/ 下六个分表，单查
+  guc.cpp 必漏（authentication_timeout 恰在 guc_security.cpp）。执行点
+  common/backend/utils/init/postinit.cpp:301 PerformAuthentication——
+  认证交换前 `enable_sig_alarm(AuthenticationTimeout×1000)`（:315）覆盖
+  fn_authenticate 全程，借 statement_timeout 基础设施兜底。**穷查范围**：
+  guc/ 六分表+guc.cpp 共 **37 个**名字含 timeout 的 GUC 条目逐项判层
+  ——①PGC_POSTMASTER 类 3 项（streaming_batch_timeout=流水线微批接收、
+  dcf_socket_timeout/dcf_connect_timeout=paxos 复制层）；②CONN_AUTH 组
+  仅 authentication_timeout 1 项；③connect 族 5 项全非端侧建连层
+  （pooler_timeout/pooler_connect_timeout/pooler_cancel_timeout=CN→DN
+  节点间通信、wal_receiver_connect_timeout=备机连主机、
+  gtm_connect_timeout=连 GTM）；④ssl 家族 16 项 GUC 名零 timeout 命中
+  （最接近的 ssl_renegotiation_limit 是流量阈值且描述明言 renegotiation
+  已废弃）；⑤tcp_user_timeout=已建连的 TCP 重传层——**结论：除
+  authentication_timeout 外，37 项中无一作用于建连/认证/SSL 握手层**
 - 启动包（ProcessStartupPacket:4639）：协议协商、SSL 请求重入（:4827）、
   user/database 与运行参数；参数在此即进入会话 GUC——"连上就慢"排查时
   先核启动包里应用带了什么参数
@@ -138,6 +158,10 @@ autocommit=off` 语句仅 B 兼容模式生效；RR 隔离级别下隐式提交�
 - 真机实测（2026-10-25 env-A）：authentication_timeout 默认 **1min**；
   tcp_keepalives_idle/interval/count 默认 **0=跟随内核**；
   idle_in_transaction_session_timeout 默认 **0=禁用**；max_connections=500
+- GUC 表全量穷查（2026-11-05，6.0.0 树）：misc/guc/ 六分表+guc.cpp 共
+  37 个 timeout 条目逐项判层（正文"别名穷查终局"节）；
+  authentication_timeout 注册 guc_security.cpp:439-452、执行点
+  postinit.cpp:301（enable_sig_alarm :315）
 - TCP 层：内核 7.1-rc4 精读结论复用（`../linux/network.md` 来源节）
 
 ## 知识网
