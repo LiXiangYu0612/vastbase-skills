@@ -10,7 +10,7 @@
 手工调整项。
 
 原件：`../workspace/G100标准化参数_2026-06-25.xlsx`（含 750 行全参数列表、
-参数更新记录 38 条非空、专项测试问题库 66 条、桂林银行现场参考 190 行——
+参数更新记录 38 条非空、专项测试问题库 66 条、某银行现场参考 190 行——
 **该文件与含内部链接/人名的表不入 Git**）。本文件由脚本从原件生成
 （2026-10-25），保真不手抄。
 
@@ -333,56 +333,56 @@ LOG2_LOCKTABLE_PART=4 / TWOPHASE_PART=1）沿用更新记录行出厂值不判�
 | behavior_compat_options | 若配置plsql_security_definer选项再创建postGis插件，使用postGis相关函数不会走索引，因为创建函数时其默认的prosecodef为true,无法使用索引扫描。 | 方案一：设置behavior_compat_options不包含plsql_security_definer，然后重建postgis插件或单独的那个函数 方案二：不调整参数，修改函数alter function xx security invoker（对于其它类似的需要使用索引的函数可能都需要重建） | 2.2.10 | 无 | https://support.vastdata.com.cn/#/info/750501619447107585 |
 | enable_opfusion | 开启enable_opfusion参数时，通过jdbc驱动执行insert all into会引起数据库实例crash | enable_opfusion=off | 2.2.10 PSU11以下 | 2.2.10 PSU11 | https://support.vastdata.com.cn/#/knowledgeInfo/723365955740110849 |
 | enable_pbe_optimization | 参数修改为off后，部分在on时执行很快的过程变得非常慢 | enable_pbe_optimization=on | 2.2.10 | 无 |
-| enable_pbe_optimization | 【1030688】【严重】修复了在过滤条件选择率高时，关闭enable_pbe_optimization参数后，PBE执行计划第6次走的generic plan与打开enable_pbe_optimization参数时的执行计划一样，未作优化的问题。 | 这种数据分布倾斜的情况,可以考虑在执行该语句之前设置会话级参数 set plan_cache_mode = force_custom_plan , 在每次执行时都代入具体的常量参数值进行代价估算,生成更优的执行计划 | 2.2.10 PSU16以下 | 2.2.10 PSU16 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1030688 |
-| enable_stmt_track | 开启enable_stmt_track参数跟踪所有执行的SQL语句导致会话内存持续增加，会话不断开则无法释放 | enable_stmt_track=off | 2.2.10 PSU7以下 | 2.2.10 PSU7 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1160475194001018425&url_cache_key=from_url_release_list_856dae921b4f51d1360f68e9e90687dc&action_entry_type=bugs |
-| query_dop | 在非线程池模式下，使用query_dop后（包含Hint级别使用），实际上query_dop相关的线程已退出，但由于代码逻辑问题导致asp统计有误 | 保持query_dop=1或升级版本 | 2.2.10 PSU15以下 | 2.2.10 PSU15 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1160475194001038298 |
-| shared_preload_libraries | 2.2.10 PSU9  MySQL兼容模式下执行加解密函数报错：ERROR:  operator too long at or near "**" LINE 2: gs_decrypt(v.a0101,'BJhxyz0318','sm4') | 参数shared_preload_libraries不配置pg_stat_statements | 2.2.10 PSU9 | 无 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1160475194001036179 |
+| enable_pbe_optimization | 【1030688】【严重】修复了在过滤条件选择率高时，关闭enable_pbe_optimization参数后，PBE执行计划第6次走的generic plan与打开enable_pbe_optimization参数时的执行计划一样，未作优化的问题。 | 这种数据分布倾斜的情况,可以考虑在执行该语句之前设置会话级参数 set plan_cache_mode = force_custom_plan , 在每次执行时都代入具体的常量参数值进行代价估算,生成更优的执行计划 | 2.2.10 PSU16以下 | 2.2.10 PSU16 | 内部缺陷库1030688 |
+| enable_stmt_track | 开启enable_stmt_track参数跟踪所有执行的SQL语句导致会话内存持续增加，会话不断开则无法释放 | enable_stmt_track=off | 2.2.10 PSU7以下 | 2.2.10 PSU7 | 内部缺陷库1160475194001018425&url_cache_key=from_url_release_list_856dae921b4f51d1360f68e9e90687dc&action_entry_type=bugs |
+| query_dop | 在非线程池模式下，使用query_dop后（包含Hint级别使用），实际上query_dop相关的线程已退出，但由于代码逻辑问题导致asp统计有误 | 保持query_dop=1或升级版本 | 2.2.10 PSU15以下 | 2.2.10 PSU15 | 内部缺陷库1160475194001038298 |
+| shared_preload_libraries | 2.2.10 PSU9  MySQL兼容模式下执行加解密函数报错：ERROR:  operator too long at or near "**" LINE 2: gs_decrypt(v.a0101,'BJhxyz0318','sm4') | 参数shared_preload_libraries不配置pg_stat_statements | 2.2.10 PSU9 | 无 | 内部缺陷库1160475194001036179 |
 | sql_beta_feature | 在Postgres兼容性模式下，FDW可以支持访问远程Postgres风格声明式分区表。非Postgres兼容模式使用postgres_fdw插件访问Postgres数据库的分区表报错 ERROR：could not operate foreign table on partitioned table | sql_beta_feature 参数值增加 'PARTITION_FDW_ON'，多个参数值以逗号分隔 | 2.2.15 | 无 |
-| synchronous_commit | synchronous_commit=remote_apply，主库使用vacuum清理死元组时ddl和grant的执行时间变为原来的10倍以上 | 无 | 2.2.10 | 无 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1160475194001027618 |
-| synchronous_standby_names | Has1.2集群主库执行vb_ctl stop命令后，未立即恢复，而是多次重启后才恢复启动。 | postgresql.base.conf内设定synchronous_standby_names='*' | 2.2.10 | 无 | https://www.tapd.cn/60475194/bugtrace/bugs/view?bug_id=1160475194001019711 |
+| synchronous_commit | synchronous_commit=remote_apply，主库使用vacuum清理死元组时ddl和grant的执行时间变为原来的10倍以上 | 无 | 2.2.10 | 无 | 内部缺陷库1160475194001027618 |
+| synchronous_standby_names | Has1.2集群主库执行vb_ctl stop命令后，未立即恢复，而是多次重启后才恢复启动。 | postgresql.base.conf内设定synchronous_standby_names='*' | 2.2.10 | 无 | 内部缺陷库1160475194001019711 |
 | track_stmt_stat_level | 全量 SQL 级别跟踪级别设置为非 OFF 时，性能下降 80% ARM 架构 1000 仓 800 并发 'OFF,OFF': 108.48w 'OFF,L1': 105.56w 'OFF,L1': 104.52w 'L0,L0': 18:40w 'L0,L1': 17.54w 'L1,L1': 16.85w 1. 该参数对性能影响很大，第一部分为全量 SQL 跟踪级别，第二部分为慢 SQL 跟踪级别 2. 全量 SQL 级别跟踪级别设置为非 OFF 时，性能下降 80% 3. 慢 SQL 跟踪级别设置越高时，每高出一个级别，性能下降 1~2% | track_stmt_stat_level='off,L1' | 2.2.10 | 无 | 极限测试场景+客户化场景收集表 |
 | vastbase_sql_mode | 当vastbase_sql_mode为空时，Vpatch升级失败，vpatch --upgrade环节出错 ERROR:  syntax error at or near ""any"" LINE 1: DROP FUNCTION IF EXISTS pg_catalog.json_length("any"); | 当客户通过alter database dbname set vastbase_sql_mode=''时，vastbase_sql_mode参数并不会在postgresql.conf文件体现。此时需要查询pg_db_role_setting表，将对应用户或库的vastbase_sql_mode参数重置。  vpatch升级时判断如果在postgresql.conf中写明了vastbase_sql_mode=''，这样在重启后每个库的vastbase_sql_mode都是空。vpatch也可以对应检测到配置文件这一行，在升级期间注释掉，启动时就是默认值，这样升级就不会报错。而通过alter方式修改的，vpatch检测不到，导致升级时vpatch未将vastbase_sql_mode设置为默认值，导致升级失败。 | 2.2.10 PSU9 升级至 2.2.10 PSU 14 | 无 | https://support.vastdata.com.cn/#/info/775081735632195585 |
 
 ## 参数更新记录（38 行全量）
 
 | 参数名 | 修改前 | 修改后 | 修改原因 | 修改影响 | 涉及版本 | 提出人 | 提出日期 | 完成日期 | 评估建议 |
-| rewrite_rule | 略 | 移除naaj_optimizer选项 | 该选项应按需配置 | 部分not in查询性能可能劣化 | 309 | 李翔宇 | 2026-06-24 00:00:00 | 2026-06-25 00:00:00 | 修改 |
-| enable_early_free | on | off | 避免并发更新时宕库 | 避免宕库 | 所有版本 | 郭兆伟 | 2026-06-23 00:00:00 |
-| audit_directory_size | 131072 | 1048576 | 避免审计目录满后夯住数据库 | 降低夯库风险 | >=309 PSU1 | 刘邦艺 | 2026-06-23 00:00:00 | 2026-06-25 00:00:00 | 修改 |
-| vb_auto_analyze_stmt_track | full | off | vb_auto_analyze_stmt_track = full 在309 psu1 有bug 会导致coredown 【【长江存储】压测触发数据库coredump】 https://www.tapd.cn/tapd_fe/60475194/bug/detail/1160475194001079257 | 避免宕库 | >=309 PSU1 | 黄港 | 2026-06-22 00:00:00 | 2026-06-25 00:00:00 | 修改 |
-| enable_pbe_optimization | on | off | Bug标题： 【江西万云科技有限公司】函数中数组使用<@方式比较触发core Bug ID：1076882  Bug链接： https://www.tapd.cn/tapd_fe/60475194/bug/detail/1160475194001076882 |  | 2.2.15 | 于伟 | 2026-06-12 00:00:00 | 2026-06-12 00:00:00 | 修改 |
-| recovery_optimization_mask | '0,1,0,0,0,1,1,1' | '0,0,0,0,0,0,0,0' | 规避备库回放宕库风险 | 降低串行回放性能 | >=309 PSU1 | 陈健华 | 2026-06-07 00:00:00 | 2026-06-08 00:00:00 | 修改 |
-| recovery_optimization_mask | '0,1,1,1,0,1,1,1' | '0,1,0,0,0,1,1,1' | 规避备库回放宕库风险 | 降低串行回放性能 | >=309 PSU1 | 陈健华 | 2026-05-25 00:00:00 | 2026-05-27 00:00:00 | 修改 |
-| enable_db_ts_space_limit | on | off | 资质功能，无实际作用，研发建议关闭。 | 影响较小 | 2.2.15,3.0.8,309 | 陈健华 | 2026-05-25 00:00:00 | 2026-05-27 00:00:00 | 修改 |
-| recovery_show_time_stats | off | on | 309 PSU1新增参数 | 增强备库回放可观测性 | >=309 PSU1 | 刘邦艺 | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| recovery_optimization_mask | '0,0,0,0,0,0,0,0' | '0,1,1,1,0,1,1,1' | 309 PSU1新增参数 | 增强串行回放性能 | >=309 PSU1 | 刘邦艺 | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| hot_standby_lock_redo_opt | off | on | 309 PSU1新增参数 | 减少备库回放冲突 | >=309 PSU1 | 刘邦艺 | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| vb_auto_analyze_stmt_track | off | full | 309 PSU1新增参数 | 记录详细慢SQL计划 | >=309 PSU1 | 刘邦艺 | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| recovery_max_workers | 4 | 1 | 配合309 PSU1新增串行回放优化，预期回放性能超过并行回放。 | 并行回放调整为串行回放 | >=309 PSU1 | 刘邦艺 | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| enable_pbe_optimization | on | off | Bug标题： 【江西万云科技有限公司】函数中数组使用<@方式比较触发core Bug ID：1076882  Bug链接： https://www.tapd.cn/tapd_fe/60475194/bug/detail/1160475194001076882 |  | 3.0.8,309 | 贺晓群 | 2026-03-24 00:00:00 | 2026-04-17 00:00:00 | 修改 |
-| most_available_sync | off | on | 单机部署的时候不会去修改该参数为on 。vb_basebackup 向单机拉取备份的时候  会hung住主节点。引发了  HL2026014779这个故障 ，建议单机部署也用ON | 提升可用性 | 所有版本 | 余大海 | 2026-02-06 00:00:00 | 2026-02-06 00:00:00 | 修改单机部署文档 |
-| vb_enable_compute_xid_horizon | on | off（使用全局索引时） | 高风险ID：277。 描述：308 PSU4分区表写入报错 could not read block xx in file "base/xx/xx": read only 0 of 8192 bytes”，建议308 PSU4版本使用全局索引的关闭参数vb_enable_compute_xid_horizon。  触发条件：分区表使用全局索引且vb_enable_compute_xid_horizon=on  影响：业务插入数据报错。  原因：308 PSU4版本vb_enable_compute_xid_horizon=on新特性开发没考虑全局索引触发的缺陷  Workaround：vb_enable_compute_xid_horizon改为off。 | 规避业务插入数据报错缺陷，建议308 PSU4版本使用全局索引的关闭参数 | 3.0.8 PSU4 | 陈健华 | 2026-01-15 00:00:00 | 2026-01-26 00:00:00 | 修改 |
-| num_internal_lock_partitions | 'CLOG_PART=256,CSNLOG_PART=512,LOG2_LOCKTABLE_PART=4,TWOPHASE_PART=1,FASTPATH_PART=20' | 'CLOG_PART=256,CSNLOG_PART=512,LOG2_LOCKTABLE_PART=4,TWOPHASE_PART=1,FASTPATH_PART=100' | FASTPATH_PART=20太小，调到100 | 加快轻量锁分配，减少阻塞 | 所有版本 | 陈健华 | 2025-12-18 00:00:00 | 2026-01-26 00:00:00 | 修改 |
-| recovery_max_workers | 4 | 1（备库有只读业务时） | 添加参数说明，若备库需要承载只读业务，则建议该备库使用串行回放，避免主备库取快照卡死。 | 仅备库有只读业务时建议修改为1，避免主备库取快照卡死 | 所有版本 | 黎俊云 | 2025-12-16 00:00:00 | 2026-01-26 00:00:00 | 增加参数说明 |
-| vb_enable_remove_unused_outputs | off | on | 用于减少子查询中不必要的目标列投影。对子查询的目标列进行优化，如果没有被上层引用，满足条件的情况下可以不进行投影，以提升效率。 | 提升性能 | >=3.0.8 PSU1 | 陈健华 | 2025-12-03 00:00:00 |  | 修改 |
-| use_part_stat_to_get_cost | off | on | enable_partition_analyze配套参数，使分区表生成查询计划时能用上分区的统计信息。 | 使分区表查询走上更合适的执行计划 | 3.0.8,>=2.2.15 PSU8 | 刘邦艺 | 2025-11-05 00:00:00 |  | 修改 |
-| autoanalyze_timeout | 300 | 900 | enable_partition_analyze开启后，大分区表可能analyze超时，因此适当调大超时时间。避免因超时导致分区表统计信息不准确。 | 避免大分区表analyze超时 | 3.0.8,>=2.2.15 PSU8 | 刘邦艺 | 2025-11-05 00:00:00 |  | 修改 |
-| max_compile_functions | 1000 | 2147483647 | 【问题描述】 数据库实例crash导致主备切换，需要排查原因。  【问题原因】  由于max_compile_functions参数限制，当会话中缓存的函数超过此值时会出现内存置换，从而触发宕机。  【解决方案】将max_compile_functions参数调整为最大值2147483647。  相关TAPD链接：  【max_compile_functions参数问题】  https://www.tapd.cn/tapd_fe/60475194/bug/detail/1160475194001061484 | 避免宕机 | 所有版本 | 陈健华 | 2025-10-28 00:00:00 |  | 修改 |
-| new_sort | adaptive_sort | off | 308 PSU1后默认开启，但属于POC特性 | 开启影响稳定性 | >=3.0.8 PSU1 | 成雪峰 | 2025-09-05 00:00:00 | 2025-10-21 00:00:00 | 修改 |
-| enable_slot_log | off | on | 主备逻辑复制槽信息保持同步，避免阻塞xlog清理 | 主备同步逻辑复制槽信息，避免阻塞xlog清理 | 所有版本 | 金焕 | 2025-08-21 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| enable_nestloop | on | off | 大表nestloop join性能很差 | 提升SQL性能 | 所有版本 | 刘邦艺,佟长胜 | 2025-08-21 00:00:00 | 2025-08-22 00:00:00 | 修改 |
-| log_lock_waits | off | on | 等锁时间超过deadlock_timeout时，打印到日志 | 增加日志量，有助于排查阻塞问题 | 所有版本 | 于伟 | 2025-08-12 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| join_collapse_limit | 30 | 8 | 8为默认值，调大可能性能劣化，因此删除该参数，不做显式配置，保持默认值。 | 优化性能 | 所有版本 | 李翔宇 | 2025-07-25 00:00:00 | 2025-07-25 00:00:00 | 修改 |
-| from_collapse_limit | 30 | 8 | 8为默认值，调大可能性能劣化，因此删除该参数，不做显式配置，保持默认值。 | 优化性能 | 所有版本 | 李翔宇 | 2025-07-25 00:00:00 | 2025-07-25 00:00:00 | 修改 |
-| random_page_cost | 4 | 1.1 | 默认值偏大，导致索引扫描成本偏高 | 降低索引扫描成本，使执行计划更倾向于走索引 | 所有版本 | 刘邦艺 | 2025-07-21 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| enable_partition_analyze | off | on | 使pg_statistic 收集 analyze 分区表分区的统计信息，在 pg_statistic 系统表中对应 starelkind='p'，starelid 为分区 oid | 优化分区表查询性能 | 3.0.8,>=2.2.15 PSU8 | 李翔宇 | 2025-07-07 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| enable_bbox_dump | off | on | 该参数关闭时，默认使用/proc/sys/kernel/core_pattern记录的路径，而非bbox_dump_path指定路径 | 能够确保core文件目录正确 | 2.2.15,3.0.8 | 刘邦艺 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| rewrite_rule | magicset | magicset,enable_any_sublink_pullup_enhanced | in子查询时，带有关联条件子查询无法提升，exists查询快，添加选项后in查询也可以提升 | 提升in查询等子连接查询性能 | 2.2.15,3.0.8 | 佟长胜 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| rewrite_rule | 略 | 移除naaj_optimizer选项 | 该选项应按需配置 | 部分not in查询性能可能劣化 | 309 | — | 2026-06-24 00:00:00 | 2026-06-25 00:00:00 | 修改 |
+| enable_early_free | on | off | 避免并发更新时宕库 | 避免宕库 | 所有版本 | — | 2026-06-23 00:00:00 |
+| audit_directory_size | 131072 | 1048576 | 避免审计目录满后夯住数据库 | 降低夯库风险 | >=309 PSU1 | — | 2026-06-23 00:00:00 | 2026-06-25 00:00:00 | 修改 |
+| vb_auto_analyze_stmt_track | full | off | vb_auto_analyze_stmt_track = full 在309 psu1 有bug 会导致coredown 【压测触发数据库coredump】 内部缺陷库1160475194001079257 | 避免宕库 | >=309 PSU1 | — | 2026-06-22 00:00:00 | 2026-06-25 00:00:00 | 修改 |
+| enable_pbe_optimization | on | off | Bug标题： 函数中数组使用<@方式比较触发core Bug ID：1076882  Bug链接： 内部缺陷库1160475194001076882 |  | 2.2.15 | — | 2026-06-12 00:00:00 | 2026-06-12 00:00:00 | 修改 |
+| recovery_optimization_mask | '0,1,0,0,0,1,1,1' | '0,0,0,0,0,0,0,0' | 规避备库回放宕库风险 | 降低串行回放性能 | >=309 PSU1 | — | 2026-06-07 00:00:00 | 2026-06-08 00:00:00 | 修改 |
+| recovery_optimization_mask | '0,1,1,1,0,1,1,1' | '0,1,0,0,0,1,1,1' | 规避备库回放宕库风险 | 降低串行回放性能 | >=309 PSU1 | — | 2026-05-25 00:00:00 | 2026-05-27 00:00:00 | 修改 |
+| enable_db_ts_space_limit | on | off | 资质功能，无实际作用，研发建议关闭。 | 影响较小 | 2.2.15,3.0.8,309 | — | 2026-05-25 00:00:00 | 2026-05-27 00:00:00 | 修改 |
+| recovery_show_time_stats | off | on | 309 PSU1新增参数 | 增强备库回放可观测性 | >=309 PSU1 | — | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| recovery_optimization_mask | '0,0,0,0,0,0,0,0' | '0,1,1,1,0,1,1,1' | 309 PSU1新增参数 | 增强串行回放性能 | >=309 PSU1 | — | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| hot_standby_lock_redo_opt | off | on | 309 PSU1新增参数 | 减少备库回放冲突 | >=309 PSU1 | — | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| vb_auto_analyze_stmt_track | off | full | 309 PSU1新增参数 | 记录详细慢SQL计划 | >=309 PSU1 | — | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| recovery_max_workers | 4 | 1 | 配合309 PSU1新增串行回放优化，预期回放性能超过并行回放。 | 并行回放调整为串行回放 | >=309 PSU1 | — | 2026-04-14 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| enable_pbe_optimization | on | off | Bug标题： 函数中数组使用<@方式比较触发core Bug ID：1076882  Bug链接： 内部缺陷库1160475194001076882 |  | 3.0.8,309 | — | 2026-03-24 00:00:00 | 2026-04-17 00:00:00 | 修改 |
+| most_available_sync | off | on | 单机部署的时候不会去修改该参数为on 。vb_basebackup 向单机拉取备份的时候  会hung住主节点。引发了  HL2026014779这个故障 ，建议单机部署也用ON | 提升可用性 | 所有版本 | — | 2026-02-06 00:00:00 | 2026-02-06 00:00:00 | 修改单机部署文档 |
+| vb_enable_compute_xid_horizon | on | off（使用全局索引时） | 高风险ID：277。 描述：308 PSU4分区表写入报错 could not read block xx in file "base/xx/xx": read only 0 of 8192 bytes”，建议308 PSU4版本使用全局索引的关闭参数vb_enable_compute_xid_horizon。  触发条件：分区表使用全局索引且vb_enable_compute_xid_horizon=on  影响：业务插入数据报错。  原因：308 PSU4版本vb_enable_compute_xid_horizon=on新特性开发没考虑全局索引触发的缺陷  Workaround：vb_enable_compute_xid_horizon改为off。 | 规避业务插入数据报错缺陷，建议308 PSU4版本使用全局索引的关闭参数 | 3.0.8 PSU4 | — | 2026-01-15 00:00:00 | 2026-01-26 00:00:00 | 修改 |
+| num_internal_lock_partitions | 'CLOG_PART=256,CSNLOG_PART=512,LOG2_LOCKTABLE_PART=4,TWOPHASE_PART=1,FASTPATH_PART=20' | 'CLOG_PART=256,CSNLOG_PART=512,LOG2_LOCKTABLE_PART=4,TWOPHASE_PART=1,FASTPATH_PART=100' | FASTPATH_PART=20太小，调到100 | 加快轻量锁分配，减少阻塞 | 所有版本 | — | 2025-12-18 00:00:00 | 2026-01-26 00:00:00 | 修改 |
+| recovery_max_workers | 4 | 1（备库有只读业务时） | 添加参数说明，若备库需要承载只读业务，则建议该备库使用串行回放，避免主备库取快照卡死。 | 仅备库有只读业务时建议修改为1，避免主备库取快照卡死 | 所有版本 | — | 2025-12-16 00:00:00 | 2026-01-26 00:00:00 | 增加参数说明 |
+| vb_enable_remove_unused_outputs | off | on | 用于减少子查询中不必要的目标列投影。对子查询的目标列进行优化，如果没有被上层引用，满足条件的情况下可以不进行投影，以提升效率。 | 提升性能 | >=3.0.8 PSU1 | — | 2025-12-03 00:00:00 |  | 修改 |
+| use_part_stat_to_get_cost | off | on | enable_partition_analyze配套参数，使分区表生成查询计划时能用上分区的统计信息。 | 使分区表查询走上更合适的执行计划 | 3.0.8,>=2.2.15 PSU8 | — | 2025-11-05 00:00:00 |  | 修改 |
+| autoanalyze_timeout | 300 | 900 | enable_partition_analyze开启后，大分区表可能analyze超时，因此适当调大超时时间。避免因超时导致分区表统计信息不准确。 | 避免大分区表analyze超时 | 3.0.8,>=2.2.15 PSU8 | — | 2025-11-05 00:00:00 |  | 修改 |
+| max_compile_functions | 1000 | 2147483647 | 【问题描述】 数据库实例crash导致主备切换，需要排查原因。  【问题原因】  由于max_compile_functions参数限制，当会话中缓存的函数超过此值时会出现内存置换，从而触发宕机。  【解决方案】将max_compile_functions参数调整为最大值2147483647。  相关TAPD链接：  【max_compile_functions参数问题】  内部缺陷库1160475194001061484 | 避免宕机 | 所有版本 | — | 2025-10-28 00:00:00 |  | 修改 |
+| new_sort | adaptive_sort | off | 308 PSU1后默认开启，但属于POC特性 | 开启影响稳定性 | >=3.0.8 PSU1 | — | 2025-09-05 00:00:00 | 2025-10-21 00:00:00 | 修改 |
+| enable_slot_log | off | on | 主备逻辑复制槽信息保持同步，避免阻塞xlog清理 | 主备同步逻辑复制槽信息，避免阻塞xlog清理 | 所有版本 | — | 2025-08-21 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| enable_nestloop | on | off | 大表nestloop join性能很差 | 提升SQL性能 | 所有版本 | — | 2025-08-21 00:00:00 | 2025-08-22 00:00:00 | 修改 |
+| log_lock_waits | off | on | 等锁时间超过deadlock_timeout时，打印到日志 | 增加日志量，有助于排查阻塞问题 | 所有版本 | — | 2025-08-12 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| join_collapse_limit | 30 | 8 | 8为默认值，调大可能性能劣化，因此删除该参数，不做显式配置，保持默认值。 | 优化性能 | 所有版本 | — | 2025-07-25 00:00:00 | 2025-07-25 00:00:00 | 修改 |
+| from_collapse_limit | 30 | 8 | 8为默认值，调大可能性能劣化，因此删除该参数，不做显式配置，保持默认值。 | 优化性能 | 所有版本 | — | 2025-07-25 00:00:00 | 2025-07-25 00:00:00 | 修改 |
+| random_page_cost | 4 | 1.1 | 默认值偏大，导致索引扫描成本偏高 | 降低索引扫描成本，使执行计划更倾向于走索引 | 所有版本 | — | 2025-07-21 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| enable_partition_analyze | off | on | 使pg_statistic 收集 analyze 分区表分区的统计信息，在 pg_statistic 系统表中对应 starelkind='p'，starelid 为分区 oid | 优化分区表查询性能 | 3.0.8,>=2.2.15 PSU8 | — | 2025-07-07 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| enable_bbox_dump | off | on | 该参数关闭时，默认使用/proc/sys/kernel/core_pattern记录的路径，而非bbox_dump_path指定路径 | 能够确保core文件目录正确 | 2.2.15,3.0.8 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| rewrite_rule | magicset | magicset,enable_any_sublink_pullup_enhanced | in子查询时，带有关联条件子查询无法提升，exists查询快，添加选项后in查询也可以提升 | 提升in查询等子连接查询性能 | 2.2.15,3.0.8 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
 | enable_oranumber_type | on | off | Oracle兼容参数，默认为on，导致不走索引，但是如果修改参数，需要重新初始化数据才能生效 | 提升查询性能，但number类型显示为numeric可能引起客户质疑 | 2.2.15,3.0.8 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| resource_limit | on | off | 参数为 on，则session_timeout、password_effect_time等参数不再生效，相关功能由 Profile 配置控制 | session_timeout等参数行为与之前版本保持一致，但会降低Oracle兼容性 | >=3.0.8 PSU1 | 陈浩贤 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| log_line_prefix | %m %r %d %u [%p] | %m %r %d %u [%x] [%p] | 增加x%，显示事务号 | 增加日志量 | 所有版本 | 陈浩贤 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
-| enable_wdr_snapshot | on | off | 发生多起snapshot占用空间很大的问题，建议关掉，按需打开。 | 节省空间和磁盘IO，但不利于分析性能问题 | 所有版本 | 张冰 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 不修改，保持打开，按需关闭 |
-| b_format_behavior_compat_options | < 3.0.8 PSU1: set_keyword_as_colname, b_format_escape >=3.0.8 PSU1:  set_keyword_as_colname, b_format_escape, show_attalias_as_colname, pg_todate_format | 增加enable_autoinc_adaptive_maxvalue | enable_autoinc_adaptive_maxvalue创建序列时自适应设置maxvalue，否则默认设置int128_max。而hibernate中sequence的maxvalue默认取long类型，无法手动调整，操作序列时将出错， enable_user_as_keyword：user字符不作为对象名，保留create user mapping功能。但配置后不支持create/alter user，故不配置 |  | >=3.0.8 PSU1 | 刘邦艺 | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 暂时仅对308 PSU1 以上调整 |
+| resource_limit | on | off | 参数为 on，则session_timeout、password_effect_time等参数不再生效，相关功能由 Profile 配置控制 | session_timeout等参数行为与之前版本保持一致，但会降低Oracle兼容性 | >=3.0.8 PSU1 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| log_line_prefix | %m %r %d %u [%p] | %m %r %d %u [%x] [%p] | 增加x%，显示事务号 | 增加日志量 | 所有版本 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 修改 |
+| enable_wdr_snapshot | on | off | 发生多起snapshot占用空间很大的问题，建议关掉，按需打开。 | 节省空间和磁盘IO，但不利于分析性能问题 | 所有版本 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 不修改，保持打开，按需关闭 |
+| b_format_behavior_compat_options | < 3.0.8 PSU1: set_keyword_as_colname, b_format_escape >=3.0.8 PSU1:  set_keyword_as_colname, b_format_escape, show_attalias_as_colname, pg_todate_format | 增加enable_autoinc_adaptive_maxvalue | enable_autoinc_adaptive_maxvalue创建序列时自适应设置maxvalue，否则默认设置int128_max。而hibernate中sequence的maxvalue默认取long类型，无法手动调整，操作序列时将出错， enable_user_as_keyword：user字符不作为对象名，保留create user mapping功能。但配置后不支持create/alter user，故不配置 |  | >=3.0.8 PSU1 | — | 2025-07-01 00:00:00 | 2025-08-21 00:00:00 | 暂时仅对308 PSU1 以上调整 |
 
 ## 版本注记
 

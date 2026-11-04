@@ -28,8 +28,7 @@ dmesg -T | tail -100 > /tmp/dmesg_$(date +%s).txt
 
 ## PANIC 机制一句话版
 
-- PANIC = 不可恢复错误级别：当前线程走退出路径（处理点 elog.cpp:2649/
-  :3604/:4365），主进程检测后**整个实例重启自愈**：崩溃恢复=从最近
+- PANIC = 不可恢复错误级别：当前线程走退出路径（退出处理在 errfinish→proc_exit，elog.cpp:762-794 一带；旧锚 :2649/:3604/:4365 实为级别映射 switch——2026-11-05 源码复核更正），主进程检测后**整个实例重启自愈**：崩溃恢复=从最近
   checkpoint 重放 WAL（机制与备库回放同源，`../internals/wal-replay.md`）
 - **报错家族语义与抛出点**：`../internals/error-fatal-mechanics.md`
   （读 logrpt 判"哪一族"用）

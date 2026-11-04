@@ -30,11 +30,11 @@ implicitly-correlated metric 思想；分叉结论本身以各形态取证链既
 | P7 内存压力与上下文泄漏 | MemAvail 低/pswpout/水印【OS per-min】+ Shared Context Δ 涨【Database Memory】+ 会话大户【Max Session Memory】+ dmesg OOM + logrpt 53200 |
 | P8 表膨胀 / 清理不及 | dead tuples 榜【Object Statistics】+ 长事务 + AV worker_cnt=0/全忙 + vacuum 参数 |
 | P9 主备复制延迟 | lag 分解（Net/Fsync/Apply）【Replication】+ 槽 inactive + WAL 速率 + 备库 IO |
+| P10 解析 / 计划开销 | Plan Time 维靠前且总占比>30%【SQL Statistics】+ Time Model parse/plan 阶段 |
 
 > **表外形态**：sys% 高（fork 税/IPI 广播）**不入 P 枚举**——四层分诊走
 > `../troubleshooting/cpu-sys-high.md`（2026-11-04 立，判例 env-E）。形态闸
 > 遇"sys 高"标签按此分流，勿硬套 P1~P12。
-| P10 解析 / 计划开销 | Plan Time 维靠前且总占比>30%【SQL Statistics】+ Time Model parse/plan 阶段 |
 | P11 连接风暴 | DB Process TCP 状态 time-wait/close-wait 激增 + ListenDrops【Protocol Errors】+ logrpt too many clients |
 | P12 错误风暴 | logrpt 级别计数；PANIC 任一条最高优先（联动 `log-analysis.md`） |
 

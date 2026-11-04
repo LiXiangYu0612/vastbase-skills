@@ -36,7 +36,8 @@ AWR 里最高频的六个事件，逐个给出：内核触发路径（file:line�
 - **机制**：真实磁盘读等待。含 OS 页缓存命中（所以 avg≈0 不代表没读，代表已在缓存）
 - **正常形态**：SSD avg<2ms；物理读/逻辑读 <1%（热数据全缓存时）
 - **异常判据**：**先看盘体 Rot 列定介质**，再按阈值：SSD avg>10ms 持续 = 异常；
-  HDD>40ms = 异常。速率持续高 + 命中率同步低 + 物理读 SQL 榜有主 + iowait/b 高
+  HDD>40ms = 异常（本行为持续**均值线**；每分钟序列**尖峰线** SSD>5/HDD>20 见
+  commit-sync-events 与 check-inventory 表 D——口径不同、并行使用非矛盾）。速率持续高 + 命中率同步低 + 物理读 SQL 榜有主 + iowait/b 高
   ——四点齐才立读瓶颈（单一信号不立论）
 
 ## 3. BufFileWrite / BufFileRead —— 临时文件真实 IO（spill 的镜像）

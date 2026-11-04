@@ -65,7 +65,7 @@ dmesg | grep -i 'sem'       # "No space left on device" 伴随信号量=SEMMSL/S
   用尽（`ss -tn state time-wait | wc -l` 对 range 容量）。
 
 **处置**：应用连接池长连接是根治；临时扩 ip_local_port_range +
-  tcp_tw_reuse=2（仅出站）。
+  tcp_tw_reuse=1（出站方向复用；=2 仅 loopback，勿用）。
 
 ## 常见错误
 

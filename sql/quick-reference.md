@@ -124,11 +124,12 @@ SELECT * FROM pg_stat_user_indexes WHERE relname = 'table_name';
 
 -- 统计信息年龄
 SELECT 
-    tablename,
-    age(relfrozenxid) AS table_age,
-    last_analyze,
-    last_autoanalyze
-FROM pg_stat_user_tables;
+    c.relname AS tablename,
+    age(c.relfrozenxid) AS table_age,      -- relfrozenxid 在 pg_class，不在 pg_stat_user_tables
+    s.last_analyze,
+    s.last_autoanalyze
+FROM pg_stat_user_tables s
+JOIN pg_class c ON c.relid = s.relid;
 ```
 
 ### 更新统计信息
@@ -146,7 +147,7 @@ ANALYZE table_name (column1, column2);
 ALTER TABLE table_name ALTER COLUMN column_name SET STATISTICS 10000;
 
 -- 并行分析
-SET max_parallel_workers_per_gather = 4;
+SET max_parallel_workers_per_gather = 4;  -- 机制演示；生产按基线 0
 ANALYZE table_name;
 ```
 
@@ -286,7 +287,7 @@ SET geqo_threshold = 20;
 ### 并行查询参数
 ```sql
 -- 并行度
-SHOW max_parallel_workers_per_gather;  -- 默认2
+SHOW max_parallel_workers_per_gather;  -- 默认2；★G100 基线=0（高危项），生产按基线
 SET max_parallel_workers_per_gather = 4;
 
 -- 并行工作进程

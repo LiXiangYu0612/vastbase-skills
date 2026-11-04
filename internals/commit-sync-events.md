@@ -47,7 +47,8 @@ wait wal sync / wait transaction sync / wait data sync 这几个是真实等待*
   ② fsync 族事件（LogFileSync/XLogFlush，VastBase 定制名）——WALWrite 正常
      但 fsync 族高 = 落盘阶段慢，pwrite 快不等于 commit 快；
   ③ **AWR 的 Disk I/O per device 每分钟 await 序列**（先看 Rot 列定介质，SSD>5ms/
-     HDD>20ms 异常线）+ iowait%——设备侧真相，库内事件账正常而 w_await 高 =
+     HDD>20ms **尖峰线**；持续**均值线**为 SSD avg>10/HDD>40，见
+     core-events-deep-dive——两线统计口径不同、并行使用非矛盾）+ iowait%——设备侧真相，库内事件账正常而 w_await 高 =
      设备/队列层问题（记账盲区）；反之 WALWrite 高而 w_await 正常 = 组提交摊销
      不足（高频小事务，commits/s 佐证）或发布唤醒链，不是盘慢。await 序列还要
      与 wait_wal_sync 桶尖峰**同分钟对齐**（对上了才谈因果，见 metrics.md 时间对齐）。

@@ -23,8 +23,10 @@
 │
 ├─ 1 内存涨/OOM ─ MaxSessionSample谁吃 → Summary总量 → SharedΔ泄漏
 │                 → GUC配比 → OS侧库内外 → 日志时刻对齐
+│                 → ★OOM 先四型分诊（内核/cgroup/53200/换页前驱）→ oom-analysis.md
 ├─ 2 CPU高 ───── Steal先排除 → TimeModel方向(含后台线程) → ASP桶
 │                 → topsql_CPU维 → 前台栈 → 库外对账 → ★自旋盲区分支
+│                 → ★sys 高变体专项分流（fork 税/IPI 广播）→ cpu-sys-high.md
 ├─ 3 IO慢 ─┬─ 读：定量DataFileRead → Rot定介质 → topsql物理读 → 命中率
 │           └─ 写：定量LogFileSync → Pagewriter behind(LSN滞后) → WAL速率
 │                    → 后台栈+flush列 → 备库联查
@@ -75,7 +77,7 @@ Total Wait Time、%DBtime、Avg、Waits——这是唯一能回答"这个等待�
 对 DB 影响多大、平均等多久"的数字。判断一个等待值不值得管、优先级多高，靠它，
 不靠 ASP（ASP 给的是活跃会话数，不是时间占比）。**闸门：%DBtime ≥10% 才值得
 溯源**（不足 10% 不定位为异常，最多观察项——与六步流程第 3 步一致）；过闸后
-平均等待超阈（IO ≥20ms / 重量锁 ≥100ms / 轻锁 ≥10ms）走重取证。
+平均等待超阈（IO ≥20ms / 锁类 avg ≥100ms 警戒·≥1000ms 异常，RULES 单源）走重取证。
 
 **event 的定性要甄别**（详见 `wait-events.md`）：
 1. STATUS 类 76 个 = 执行阶段标记（HashAgg-build hash、Sort、flush data…），不是等待，不计占比。

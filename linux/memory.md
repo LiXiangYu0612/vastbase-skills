@@ -92,6 +92,9 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
 - oom_reaper 只收割地址空间不等退出：**老内核（3.10）没有 oom_reaper**，
   kill 后释放慢、二次 OOM 概率高——env-A 档注意
 
+分诊入口：OOM 四型（内核 killer/cgroup/库侧 53200/换页前驱）见
+`../troubleshooting/oom-analysis.md`。
+
 ## 页缓存与数据库：双缓存结构
 
 - VastBase 的 shared_buffers 是**用户态**缓存（见 `buffer-manager.md`），OS 页缓存
@@ -138,7 +141,8 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   **现场口述待取数确认⚓**，成分拆解见判例遗留，见
   `../cases/case-env-E-sys-spike-archiver-fork-202611.md` 与
   `../troubleshooting/cpu-sys-high.md` fork 税节）
-- 处置：`enable_huge_pages`（HugeTLB）——共享区页表 ÷500，fork 税归零；
+- 处置：`enable_huge_pages`（HugeTLB）——共享区份额归零：fork 停摆与 exec
+  拆除消除；**私有集 COW 风暴不归大页治**（分工见 cpu-sys-high）；
   THP 不解决此问题（私有匿名页动态合并，另有拆分坑）
 - 采集现状：PageTables 已在 AWR OS Memory Usage 表；VmPTE（进程级）未采集
   ——诊断 fork 税时手工 `grep VmPTE /proc/<主进程pid>/status`
@@ -184,7 +188,7 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   shared_buffers 太大或单节点绑死，任务被迫溢出）；local 低 + MemFree 不低
   = **内存布局错配**（shared_buffers 跨节点 interleave，但线程绑单节点跑，
   读另一半必远程——最常见）
-- **dimo 实例实测（2026-10-26 报告）**：Node0 local 40.23M / other 6.47M
+- **env-M 实例实测（2026-10-26 报告）**：Node0 local 40.23M / other 6.47M
   = **86.15%**，Node1 99.60%——Node0 失衡，13.85% 远程访问；MemFree
   Node0 14GB > Node1 9.4GB，方向指向"布局错配"而非"内存不足"
 
@@ -299,7 +303,7 @@ VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 Vm
 - 二次补读（2026-10-27，NUMA 节）：drivers/base/node.c:572-582
   （node_read_numastat 六计数器渲染）、mm/page_alloc.c:3193-3198
   （NUMA_HIT/MISS/FOREIGN 分配计数）、include/linux/vmstat.h:240-248
-  （__count_numa_event）；dimo 实例 awrrpt NUMA 表实测（Node0 86.15% vs
+  （__count_numa_event）；env-M 实例 awrrpt NUMA 表实测（Node0 86.15% vs
   Node1 99.60% Local Ratio）
   fs/proc/meminfo.c:56-62,108-109、include/linux/mmzone.h:796-799、
   mm/page_alloc.c:268,6441、mm/vmscan.c:201,244-248,2388-2420,7108,7438,7638、

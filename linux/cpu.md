@@ -66,7 +66,7 @@ kernel/softirq.c（深读）：
 ## sys 间歇性冲高：进程 fork 税与 COW+TLB 广播（案例锚点）
 
 VastBase 内核为线程模型（每会话与后台角色各为线程，**单进程单 mm**，含全部
-shared_buffers 页表+私有可写集——与任何池化设置无关，线程模型即如此）。
+shared_buffers 页表+私有可写集——线程模型即如此，与连接组织方式无关）。
 任何**进程级 fork**（归档命令/备份工具等外部命令）都要复制整套页表并把
 父进程 MAP_PRIVATE 页全部改只读，后果三连（144 核/300G 共享区实测）：
 
@@ -113,7 +113,7 @@ vb_tool `platform_label()` 三级判定（源码 vb_tool:32575-32602）：① DM
 vendor/product 命中 VM_KEYWORDS（kvm/qemu/vmware/xen/hyper-v/virtualbox 等
 17 词）→ `Virtual (<vendor+product>)`；② DMI 有值但无关键词 → `Physical`；
 ③ DMI 缺失时看 /proc/cpuinfo `hypervisor` flag → `Virtual (hypervisor)`；
-④ 都没有 → 字段空。dimo 实例 `x86_64 / Physical` = DMI 实锤物理机。
+④ 都没有 → 字段空。env-M 实例 `x86_64 / Physical` = DMI 实锤物理机。
 
 **两条辅助判据（Platform 为空或需交叉验证时）**：
 
@@ -170,8 +170,9 @@ WRMSR 写 ICR——`native_write_msr_safe` 高占比的真相）→ 接收端中
 WRMSR/接收/自旋等待）都记 sy，且并行摊到所有核**——核越多放大越狠（N 核单次扇出 N-1）。
 发送方等待与接收方执行两端都在烧，所以一台机器上"所有核 sy 一起涨"。
 
-**定位**：`grep -w processes /proc/stat` 每秒差值=fork 速率；`perf record -F 199 -a -g
---call-graph dwarf,16384 -- sleep 30` 抓用户态父帧找谁在 fork（perf top 无 -g 只有
+**定位**：`grep -w processes /proc/stat` 每秒差值=fork 速率；`perf record -F 99 -a -g
+--call-graph fp -- sleep 30` 抓父帧找谁在 fork（与 cpu-sys-high/tracing-tools 统一
+99Hz+fp；dwarf 栈全系统开销大仅定点短窗用；perf top 无 -g 只有
 内核符号，看不到生产者）；短命进程 `pidstat -t 1`。DB 本体可先排除：VastBase
 单进程多线程共享 mm，不产生此形态——嫌疑=k8s exec 探针/秒级脚本/cron 风暴/每次连接
 起一个 psql 的循环。
@@ -230,7 +231,7 @@ llist_add_batch 17.89%）；函数族语义=kernel/smp.c 与 arch/x86 TLB flush 
   （EEVDF）、kernel/sched/psi.c、fs/proc/stat.c:41-54,174-179
 - 二次补读（2026-10-27，虚拟化判定节）：kernel/sched/core.c:825
   （paravirt_steal_clock 记 steal）；/proc/cpuinfo model name 字段语义；
-  dimo 实例 awrrpt CPU Info 章实测（Intel 8374C 2×36×2=144 逻辑核，物理机）
+  env-M 实例 awrrpt CPU Info 章实测（Intel 8374C 2×36×2=144 逻辑核，物理机）
 - 生产内核版本实测：env-A uname -r（2026-10-25）
 - 《Linux 性能优化实战》CPU 篇作主题框架参照（口径以源码为准）
 

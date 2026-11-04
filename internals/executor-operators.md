@@ -26,7 +26,7 @@ Sort/Hash（operator-memory.md）。**推论**：AWR 里"调 work_mem 不生效"
 - **判读**：内层 index scan 的执行次数 ≈ 外层返回行数（索引扫描次数暴涨
   而 plan 显示 NL 是正常形态）；无参数化的整表内层重扫是灾难形态（planner
   会自动插 Material 缓存——非参数化 NL+无 Material=计划走形信号）
-- semi/anti 提前退出；注释实证 mergejoin 内层不缓存数据的特殊分支（:208+）
+- semi/anti 提前退出；注释实证 mergejoin 内层不缓存数据的特殊分支（⚓文件名待补 :208+）
 
 ### MergeJoin（nodeMergejoin.cpp）
 - **状态机**（:608-686+）：EXEC_MJ_INITIALIZE_OUTER → INITIALIZE_INNER →

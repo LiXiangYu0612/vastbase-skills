@@ -48,12 +48,11 @@ ss -lnt | grep <端口>          # 进程在不在听
   max_connections——先查是谁吃光：
 
 ```sql
-SELECT usename, client_addr, count(*) FROM pg_stat_activity
-WHERE backend_type = 'client backend' GROUP BY 1,2 ORDER BY 3 DESC;
+SELECT usename, client_addr, count(*) FROM pg_stat_activity  -- ★基线无 backend_type 列（社区 PG 语法）；本机 unix 连接 client_addr 为空 GROUP BY 1,2 ORDER BY 3 DESC;
 -- 基线以 state 分布看：idle 占大头 = 应用不还连接（连接池缺失/泄漏）
 ```
 
-- idle 海量 → 根因在应用侧连接管理（池化/超时归还），**砍 max_connections
+- idle 海量 → 根因在应用侧连接管理（连接复用/超时归还），**砍 max_connections
   或加内存不是根治**；突发风暴配 `timeout`/连接池上限
 - 认证失败（密码/hba）与授权失败报错是明文的，按报错对 pg_hba.conf 与
   角色权限处理，不在这四道闸里
@@ -64,7 +63,7 @@ WHERE backend_type = 'client backend' GROUP BY 1,2 ORDER BY 3 DESC;
 |---|---|---|
 | 连接超时全怪数据库慢 | 闸 1~3 任一都会超时，多数与库无关 | 四道闸从外向里过一遍 |
 | 静默丢 ACK 当网络抖动 | 全连接队列满的默认行为（network.md） | ss -lnt Recv-Q + nstat 对账 |
-| too many clients 就调大上限 | idle 泄漏时调大=延迟爆炸+内存翻倍 | 先按 client_addr 归因，池化根治 |
+| too many clients 就调大上限 | idle 泄漏时调大=延迟爆炸+内存翻倍 | 先按 client_addr 归因，应用侧连接复用根治 |
 | 双实例端口配串 | 同机多库常见 | ss -lnp + postgresql.conf 对账 |
 
 ## 版本注记

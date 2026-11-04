@@ -190,7 +190,7 @@ se:            该事件的 Triggers（file:line）与语义
 - 源码结论标注基线（openGauss 6.0.0 树，G100 V3 档）；VastBase 定制分支可能有差异
 - PageWriter 源码入口按实际检索为准（版本间有独立采样/状态段差异）
 
-## 实测新锚（2026-10-26 迪墨云样本三锁，源码当日定论）
+## 实测新锚（2026-10-26 env-M样本三锁，源码当日定论）
 
 ### SInvalWriteLock — 共享失效队列写锁（重等待形态）
 
@@ -203,7 +203,7 @@ se:            该事件的 Triggers（file:line）与语义
   表（catalog）与海量 prepared statement 访问均为候选——**statio 物理读王出现
   pg_sqlplan 类表只是同窗并存信号，不构成同链证据**（pg_sqlplan=VastBase 定制
   计划历史表 pg_sqlplan.cpp，enable_sqlbind=off 时仍可能活跃，写入路径未定论：
-  开源基线无此表、官方文档 V2.2.10/V2.2.15 无专章，2026-10-26 迪墨云样本教训）。
+  开源基线无此表、官方文档 V2.2.10/V2.2.15 无专章，2026-10-26 env-M样本教训）。
   锁源三选一法：se 溯源等待者 / Callstack 前台栈（缩短采样间隔）/ 双点采样
   嫌疑表体量增速。
 - 排除：单纯 waits 高而 avg≈0 按计数型处理，不算瓶颈。
@@ -235,7 +235,7 @@ se:            该事件的 Triggers（file:line）与语义
 - 内核源码基线 `<openGauss-6.0.0-src>/`
   （BufHashTableSearch 计数型机制核于 `bufmgr.cpp BufferAlloc()`；
   SInvalWriteLock/UniqueSQLMappingLock/BufferContentLock 三条核于
-  sinvaladt.cpp / instr_unique_sql.cpp / inval.cpp，2026-10-26 迪墨云样本实战回灌）
+  sinvaladt.cpp / instr_unique_sql.cpp / inval.cpp，2026-10-26 env-M样本实战回灌）
 - vb_tool Callstack 采样器源码（指纹化规则与空闲基线归纳）
 
 ## 知识网

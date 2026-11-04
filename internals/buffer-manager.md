@@ -40,7 +40,7 @@ INIT_BUFFERTAG → BufTableHashCode
    （候选链扫描/clock 转圈），两者都是"操作自身耗时"不是阻塞，但含义完全不同
 2. **前台脏页自刷 + 单页双写（:3103-3176）**：pagewriter 存活且版本支持
    （DW_SUPPORT_NEW_SINGLE_FLUSH）时，backend 淘汰到脏页**自己刷**：
-   条件取 content_lock 共享锁（**防死锁设计**：注释实证了两个 backend 同时
+   条件取 content_lock 共享锁（**防死锁设计**：注释实证（⚓锚点待补）了两个 backend 同时
    btree 分裂各持对方脏页的死锁场景）→ `first_version_dw_single_flush`（:3169，
    单页双写，持 single_cxt->flush_lock）→ FlushBuffer → 完成。
    **这就是 DoubleWriteLock 出现在前台会话的完整因果链**——不是异常形态，

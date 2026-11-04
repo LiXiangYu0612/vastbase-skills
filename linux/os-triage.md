@@ -21,7 +21,7 @@
    多域计数器同时留痕（"症状层≠根因层"的机制本体；库内侧同构见
    `../internals/kernel-data-path.md`，本树是其 OS 侧）
 3. **内存是公共介质**：page cache=IO 缓存层（回收必写回→假 IO 瓶颈根源）、
-   sk_buff/tcp_mem/conntrack=网络吃内存、线程栈/churn 也吃内存
+   sk_buff/tcp_mem/conntrack=网络吃内存、线程栈反复创建也吃内存
 
 ⇒ 四域两两无"无关对"，任意单域症状其余三域基线必有话可说——
 组合拳指纹表不是启发式，是结构必然。
@@ -74,7 +74,7 @@ ss -s ; ss -tn state close-wait | head   # socket 症状面
   常驻后台线程（pagewriter/ckpt/autovacuum/WLM，名字可辨）
 - 烧在哪：gs_stack 取栈（执行器算子？锁自旋？内存回收路径？）
 - **对网络的投影**：CPU 满时 accept+认证+协议栈全部降速，建链慢/超时/
-  CLOSE_WAIT churn 是伴生（与 A 支同形，区别在 st=0）
+  CLOSE_WAIT 反复建断是伴生（与 A 支同形，区别在 st=0）
 - 特殊形态：锁自旋（`locks.md`——自旋不交接；`sysv-semaphore-usage.md`
   区分热睡眠路径）；脏页淘汰压力路径（`buffer-manager.md`）
 
@@ -115,7 +115,7 @@ ss -s ; ss -tn state close-wait | head   # socket 症状面
 | 症状 | 语义 | 判读 |
 |---|---|---|
 | listen Recv-Q 积压 | accept 消费不动 | 先回 A/B 支（消费者是 postmaster，CPU 供不上是主因） |
-| CLOSE_WAIT 堆积 | 本端没 close | **单端集中=对端 churn+本端慢**（本案指纹）；分散多端=普遍冻结；人口学三子群见 network.md |
+| CLOSE_WAIT 堆积 | 本端没 close | **单端集中=对端反复建断+本端慢**（本案指纹）；分散多端=普遍冻结；人口学三子群见 network.md |
 | TIME_WAIT 多 | 主动关方正常形态 | 高并发短连的常态；量大才看复用/应用侧长连 |
 | Retrans% 抬升 | 数据+SYN-ACK 重传（含口径） | st/await 都正常才认真查网络层；看趋势对比基线 |
 | conntrack 满 | 新建连接被丢 | nf_conntrack 计数与上限对账（network.md） |
@@ -129,7 +129,7 @@ ss -s ; ss -tn state close-wait | head   # socket 症状面
 | ② 欠 CPU → 认证慢 | clone 线程+认证要 CPU | "能连但卡"（TCP/unix socket 通杀） |
 | ③ us 满 → 软中断饿 | 协议栈处理降速 | 重传/收包丢——"网络抖"实为 CPU 抖 |
 | ④ si 高 | 收包软中断吃 CPU | 看着网络慢，实为 softirq 单核打满 |
-| ⑤ CPU 慢 → 应用侧超时 churn | 客户端心跳/连接超时 → 断连重连反压 | 单端 CLOSE_WAIT 堆积+重试风暴，倒过来再压垮 DB |
+| ⑤ CPU 慢 → 应用侧超时反复建断 | 客户端心跳/连接超时 → 断连重连反压 | 单端 CLOSE_WAIT 堆积+重试风暴，倒过来再压垮 DB |
 
 （反向关联：E 支 IO 慢 → D 状态抬 load、wa 高；F 支 reclaim → 假 IO；
 G 支 tcp_mem → 内存。四域两两都有投影，**看到任何单域症状，先扫其余三域基线**）

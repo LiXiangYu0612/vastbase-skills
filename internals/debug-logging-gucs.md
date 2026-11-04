@@ -135,7 +135,7 @@ set logging_module = 'on(OPT,OPT_JOIN)';  -- 优化器会打印不能生成/没�
 
 ## 版本注记
 
-- 源码结论基于 openGauss 6.0.0 树（≈G100 V3 档）；env-T 实机=VastBase G100 3.0.8
+- 源码结论基于 openGauss 6.0.0 树（≈G100 V3 档）；env-T 实机=VastBase G100 V3.0 Build 8（3.0.8）
   （更早内核）：模块名 MEM_CTL/MEM 漂移、SCHEMA 无 dump 代码、trace 族未注册
   ——**结论跨版本前先在目标机 `SHOW logging_module` / `SHOW <guc>` 验一遍**
 

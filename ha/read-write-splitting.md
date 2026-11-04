@@ -51,7 +51,7 @@ wal_level=hot_standby   hot_standby=on
 synchronous_commit=on / remote_apply
 hot_standby_feedback=on            # 备机最小事务号反馈主机
 enable_defer_calculate_snapshot=off # 不推迟获取快照
-recovery_max_workers=8  recovery_parallelism=1
+recovery_max_workers=8  recovery_parallelism=1  -- 内部测试口径；生产基线=串行回放（1），见 admin/g100-standard-params
 recovery_parse_workers=1  recovery_redo_workers=1
 ```
 

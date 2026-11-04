@@ -9,7 +9,7 @@
 2. **机械闸** = `scripts/overview_table.py`（表 D 全量镜像）——从 digest 程序化提取、
    阈值固定（RULES 字典）、每次分析第 2 步必产 ■异常/▲警告 表；判定零主观
 3. **跨层关联组**（表 E）——机械闸是单层触发，OS↔DB↔LOG 的联系在此：
-   13 个问题域的三层证据组合+合取规则（单层=怀疑/两层同向=立论/三层互证=闭环）
+   14 个问题域的三层证据组合+合取规则（单层=怀疑/两层同向=立论/三层互证=闭环）
    +深入分析（三层分工本质、诊断与分析两类用途、硬边界）
 4. **形态闸**（人工纪律兜底）——机械闸亮 ■/▲ 的项按 FORM_OF 映射进
    `bottleneck-patterns.md` P1~P12 走取证链；机械闸覆盖不到的判读（表 D 尾
@@ -33,8 +33,8 @@
 | OS · Filesystem Usage | 空间/inode 逼近满（pg_xlog/pg_arch 盘满=WAL 停写高危） | P4 / P9 |
 | OS · 网络（网卡/TCP/RTT/softnet/conntrack） | 丢包分层（ring/backlog/预算/队列/表满）、重传、RTT 劣化、短连接风暴、accept 队列饱和 | P11 / 症状 11 |
 | OS · dmesg | 内核级硬证据（OOM/存储/文件系统） | P7 等 |
-| OS · System Activity（cs/intr/forks/fd） | **Forks/s=进程+线程 churn 速率**（周期性突增=归档/外部命令 fork 指纹，联动 sys 高分诊与 env-E 判例）、切换风暴总量（配 cpu.md cswch/nvcswch 分列判读）、中断总量、fd 逼近上限 | P1 / P2 / sys 高 |
-| OS · db_proc（postmaster 段） | **Threads Δ=线程数膨胀（连接/后台线程增长与 churn）**、nvcswch 高=CPU 争抢实锤、VmRSS 涨势、cpuset 钉核核查 | P1 / P7 / sys 高 |
+| OS · System Activity（cs/intr/forks/fd） | **Forks/s=进程+线程创建速率**（周期性突增=归档/外部命令 fork 指纹，联动 sys 高分诊与 env-E 判例）、切换风暴总量（配 cpu.md cswch/nvcswch 分列判读）、中断总量、fd 逼近上限 | P1 / P2 / sys 高 |
+| OS · db_proc（postmaster 段） | **Threads Δ=线程数膨胀（连接/后台线程增长与更替）**、nvcswch 高=CPU 争抢实锤、VmRSS 涨势、cpuset 钉核核查 | P1 / P7 / sys 高 |
 | 后台线程表（Thread/PID/State/WaitEvent） | **关键后台线程缺席/State 异常=停摆**（archiver/WALwriter/pagewriter 消失即 P4/P9 级，env-E 的 archiver fork 即此线） | P4 / P9 / sys 高 |
 | Load Profile | 吞吐/会话/SQL 速率画像（证据层） | 全形态证据 |
 | Cache Hit Ratio | 命中率真低（配物理读四点齐） | P3 |
@@ -89,8 +89,7 @@
 | OS 资源 | 运行队列 max/核 | >2 / >1；**守卫：busy max<70%=无饱和佐证不判**（瞬时尖峰） | P1 |
 | OS 资源 | 内存可用 min | ≤10 / ≤20 | P7 |
 | OS 资源 | swap 换出 max（页/min） | ≥10000 / ≥1000 | P7 |
-| OS 资源 | PageTables(全机)/VmPTE(主进程) | 明显超"映射量/512"即肥大；GB 级+未用大页=fork 税高危（PageTables 报告已有；VmPTE 手工取） | sys 高 |
-| OS 资源 | 数据盘 await max（按介质） | SSD>5 / HDD>20（util 永不判读） | P3/P4 |
+| OS 资源 | 数据盘 await max（按介质） | SSD>5 / HDD>20 尖峰线（util 永不判读；持续均值线 SSD avg>10/HDD>40 见 core-events-deep-dive） | P3/P4 |
 | OS 资源 | Cgroup 配额咬合（nr_throttled Δ） | Δ>0 即异常（digest 旗标） | P2 |
 | OS 资源 | cgroup memory.events OOM | 绝对值>0 即异常 | P7 |
 | OS 资源 | Softirq %sirq 单核峰值 | ≥80 / ≥50 | P2 |
@@ -137,7 +136,9 @@ softnet dropped/time_squeeze、zone 水位 WM Free<WM Min、listener Recv-Q 逼�
 Send-Q、Retrans%×RTT 并排读（真劣化 vs 丢在别处）；
 **System Activity 三率**（Forks/s 对照基线看突增与周期、Context Switches/s、
 Interrupts/s）、db_proc 的 Threads Δ 与 nvcswch、后台线程表关键线程缺席
-（archiver/WALwriter/pagewriter）。
+（archiver/WALwriter/pagewriter）、**PageTables/VmPTE 页表肥大**（判读公式=
+映射量/512，GB 级+未用大页=fork 税高危；PageTables 报告已有，VmPTE 手工取，
+判读链 linux/memory.md 页表节——无固定阈值不入机械闸）。
 
 ## 表 E：OS↔DB↔LOG 跨层关联组（合取立论——检查项之间的联系）
 
@@ -198,7 +199,7 @@ digest(extract.py) → ①第2步 健康总览 = 表D 机械闸产物(overview_t
 
 ## 版本注记
 
-- 机械闸 47 项 = 2026-10-24 版 33 项 + 2026-11-01 对齐 v2.5.20 新节 8 项
+- 机械闸 45 项（2026-11-05 全量复数统一，原 44/47 两处漂移） = 2026-10-24 版 33 项 + 2026-11-01 对齐 v2.5.20 新节 8 项
   （Cgroup×2 / sirq×2 / NUMA / Retrans / TempFile / 形态映射扩展）
   + 2026-11-02 三轮 TCP 状态峰值 3 项（TW/CW/SR，样例阈值待用户校）
 - 2026-11-02 二轮完善：表 B 按 logrpt 报告本体重写（六部分结构；补**锁/死锁详情

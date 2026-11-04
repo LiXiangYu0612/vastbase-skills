@@ -54,6 +54,12 @@ REDO 点后**再看前一条（prev）**才是真正改这页的 XLOG（pd_lsn �
 取页 → xlog 回溯到 XLOG_HASH_SQUEEZE_PAGE → 两条链对上 → 按 xid 查全操作
 （大 insert + hash 索引）→ generate_series 复现闭环 → 对社区 issue（I89N9K）。
 
+## 处置
+
+- 先保全再动手：全页备份 + pg_control + 对应日志窗口归档
+- 有备份/PITR：时间点恢复回退优先于原地修页
+- 疑内部缺陷：栈指纹对内部缺陷库并上报，保留现场件
+
 ## 常见错误
 
 | 错误 | 为什么错 | 纠正 |

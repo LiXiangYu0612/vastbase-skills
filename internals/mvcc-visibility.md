@@ -58,7 +58,7 @@ transaction 会话持 xmin 到事务结束，**必然钉住 OldestXmin 卡 vacuu
 OldestXmin 列仍在推进=**正常机制，不是渲染 bug**；反过来，带 XID/持有效
 快照的长事务仍会钉（10-26 envC 案例 5.8 天长事务钉 OldestXmin 即此）。
 钉与不钉的分界=是否持有效快照版本/已分配 XID，不是事务年龄。
-实战样本：迪墨云 20261104（3h idle in txn + OldestXmin 每采样推进 10 万+）。
+实战样本：env-M 20261104（3h idle in txn + OldestXmin 每采样推进 10 万+）。
 
 ## AWR 判读应用
 

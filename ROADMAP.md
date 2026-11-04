@@ -87,3 +87,18 @@
 候选链双计数器无视图出口、基线无认证超时 GUC）。仍开的小锚：锁不可得
 跳过文案（autovacuum）· AuthenticationTimeout 是否以别名存在
 （connection-lifecycle）· cgroup v2 swappiness 语义细节（linux/memory）
+
+## 存量审计挂账（2026-11-05 全量 77 文件四路审计，P1 已修 19 项，遗留如下）
+
+- [ ] 案例反向锚点：envC（7 个机制文件无一回挂）、envD（wait-events）、
+      env-odbc（connection-lifecycle）
+- [ ] sql/references Optimizer 三篇恰 500 行截断（01 缺视图展开/表达式优化/
+      常量折叠三节，06/09 代码块未闭合）+ 全篇无 file:line + 09 头部占位语；
+      optimizer-deep 同查
+- [ ] sqlhc-analysis "225s→0.45s" 案例出处缺；sql/ 六文件缺「来源」「版本注记」
+- [ ] sqlhc-integration "3.0.9.1" 版本记法与 version-map 统一
+- [ ] cases 命名统一（envC/env-odbc 连字符风格对齐 env-A/env-E）
+- [ ] cpu.md 补"判读速查"节标题；os-triage/file-descriptors 补「常见错误」；
+      flush-checkpoint 版本注记/来源分立
+- [ ] read-write-splitting.md:71 自标"公仓发布须脱敏重写或排除"——下次发布核对
+- [ ] OOM B 型 cgroup v1/v2 口径按 vb_tool 实采定稿；env-E VmPTE 取数确认⚓

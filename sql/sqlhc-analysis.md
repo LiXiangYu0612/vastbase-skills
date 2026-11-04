@@ -303,7 +303,7 @@ NestedLoopCost = 60000 + 1000000 × 0.005
 ### 关键参数
 | 参数 | 当前值 | 建议值 | 问题描述 |
 |------|--------|--------|----------|
-| work_mem | 4MB | 256MB | 哈希表可能溢出 |
+| work_mem | 4MB | 256MB | 哈希表可能溢出（会话级临时 SET 演示；全局调参按 parameters：估算配额优先、调大是下策） |
 | ... | ... | ... | ... |
 
 ## 🎯 优化方案
@@ -375,7 +375,7 @@ DROP INDEX IF EXISTS idx_unused;
 ### 配置调优
 ```sql
 -- 增加工作内存
-SET work_mem = '256MB';
+SET work_mem = '256MB';   -- 会话级临时；全局口径见 parameters.md（调大是下策）
 ALTER DATABASE mydb SET work_mem = '256MB';
 
 -- 调整成本参数（SSD）

@@ -13,9 +13,11 @@
 ```sql
 -- 等待链两表联查（快照存档，事后分析全靠它）
 SELECT * FROM pg_thread_wait_status;          -- 线程级等待状态（基线视图）
-SELECT pid, sessionid, usename, state, wait_event_type, wait_event,
+SELECT pid, sessionid, usename, state,
        query_start, state_change, query
 FROM pg_stat_activity
+-- ★基线 pg_stat_activity 无 wait_event_type/wait_event 列（社区 PG 才有）；
+--   等待详情用上面 pg_thread_wait_status（wait_status 判锁类型）
 WHERE state <> 'idle' ORDER BY query_start;   -- 会话与语句现场
 ```
 
@@ -25,8 +27,8 @@ OS 侧同步留证：`ss -tnp | tee` 一份（假死连接排查，见 `../linux
 
 | 形态 | 判据 | 走向 |
 |---|---|---|
-| 行/表锁阻塞链 | wait_event_type=Lock，一个源头会话后面挂一串 | 第 3 步 |
-| LWLock/轻锁自旋 | wait_event_type=LWLock，CPU 还高（自旋不睡眠） | `../internals/locks.md`；VastBase 专有 `pg_stat_get_backend_lwlocks()` join sessionid 拿持锁 SQL（env-A 实测，基线源码无此函数） |
+| 行/表锁阻塞链 | wait_status 含 Lock（pg_thread_wait_status），一个源头会话后面挂一串 | 第 3 步 |
+| LWLock/轻锁自旋 | wait_status 含 LWLock，CPU 还高（自旋不睡眠） | `../internals/locks.md`；VastBase 专有 `pg_stat_get_backend_lwlocks()` join sessionid 拿持锁 SQL（env-A 实测，基线源码无此函数） |
 | 假死持锁 | 源头会话"消失"（应用已重连）但锁不释放 | `ss -tnp` 查对端状态/重传计数——内核要 ~15 分钟才放弃重传（`../linux/network.md` 假死连接节） |
 
 ### 3. 锁阻塞：拿持锁会话与 SQL
