@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<!--
+  AWR 诊断报告模板（vastbase 技能域 performance；2026-10-24：多面板趋势图 + 介质分档 + 参数对照）
+  ██████████████████████████████████████████████████████████████████████
+  生成规则（违反任何一条=重写）：
+  1. 所有数值只能来自 digest。digest 没有的数字一个都不许出现。**原值照抄，
+     禁四舍五入改写**（509.753 不写成 509.8、1.68 不写成 1.7）；展示截断只允许
+     丢小数尾——selfcheck 按前缀对账，改写值必被逮（2026-11-04 收紧）。
+  2. 正文禁用分析黑话：L0~L6、S1~S9、收敛句、立案、主导轴、四轴证据、
+     互证、记账型、"证据链：""影响面：""置信度：""判定：" 这类标签墙。
+     分析方法词汇只允许出现在附录 C。
+  3. 结论必须明确：每个问题写清"是什么、不是什么、影响多大、优先做多高"，
+     不许和稀泥。数据不支持定论时在问题卡内标"根因未定 + 缺什么数据"（2026-11-02 用户令：不设数据局限章节）。
+  4. 问题分析要专业深入：保留源码级机理（等待事件在内核里的触发点、
+     锁的持有/等待关系、执行计划的代价特征、每次执行成本、参数相互作用），
+     但用 DBA 的正常语言写，不用编号代号。
+  5. 证据一律表格化：数据 | 数值 | 出处（源报告章节名）| 说明。
+  6. 图表：把 extract.py 产出的 <输入名>_charts.json 整个文件内容粘进本模板
+     底部 script 区的 const DATA 处（渲染器自动画 per-minute 面板 + 5 分钟桶
+     面板，含悬停数值）。不手写 SVG、不手改数据。
+     没有 charts.json（旧报告）就把 panels 置空数组，图区自动隐藏，
+     并在附录 C 声明。★不画异常时段底纹带图（2026-11-03 用户令删，勿再加回；
+     DATA.bands 仍可粘贴，渲染器不消费，异常时段只进附录 A 明细表）。
+  7. IO 延迟结论必须先报盘体（Disk I/O per device 表的 Rot 列：
+     0=SSD 1=HDD），再按介质阈值判正常/异常；混盘分别说。
+  8. 参数嫌疑必须落到参数名+当前值+建议值：查 digest 的 GUC/sysctl
+     关键参数段（对照 performance/parameters.md），没有的在附录 C 一句带过。
+  9. 中文为主；严重度用 图标+文字 双编码，不单靠颜色。
+ 10. 文件名：<输入名>_analyze.html，放输入同目录。
+ 11. VB 口径纪律：CPU_TIME 含后台线程、事件不分前台后台、%DBtime 可>100%，
+     涉及占比的结论要写明用哪条独立口径佐证（AAS/ASP 桶计数/OS 序列）。
+  12. ★只报问题（2026-10-26 用户令）：报告的每一段都必须是问题或问题相关。
+     正常项/参考项一律不进报告——健康总览表只列 ■异常/▲警告，其余用一句
+     "其余 N 项正常/参考（不展开）"带过；不许写"某某方面正常"的点名段落，
+     常规指标与画像数字不单独成段（页首 KPI 条除外，它只是数字不带论述）。
+     ★非问题不立卡（2026-11-04 用户令）：定性为非问题（伪象/小分母/无饱和
+     佐证的瞬时尖峰）的项不写问题卡、不占编号——抑制在闸层守卫完成，
+     本模板不得出现"核查为非问题"类占位卡。
+  13. 每条发现都要短：现象 ≤2 句、证据表 ≤4 行（只留支撑结论的数字）、
+     原因 ≤3 句（到机制，不铺陈）、建议 ≤3 条。写不下就是没想清楚，先删。
+ 14. ★一致性五查（2026-11-04 立，逐条交付前自查）：
+     ① 数字自洽——卡内枚举必须加总对上宣称的计数（"偏离 9 项"=卡内 3+4+1+1
+        格式误报），对不上就写明去向；
+     ② 术语唯一——"异常"只归 39 项健康检查的 ■/▲；OS 分钟序列硬阈值触发的
+        时段一律叫"越限时段"（两套口径共用一词=自相矛盾）；
+     ③ 修饰性括号注也是结论——"X 为主/几乎全部"必须能指向 digest 章节，
+        指不到就删；
+     ④ headline 与正文同口径——最要紧问题说 N 件就是 N 件，动词（动手/留意）
+        不漂移；
+     ⑤ 修订必同步日期——页眉分析日期与页脚生成日期改成修订当日。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{实例名}} AWR 分析报告 · {{快照窗}}</title>
+<style>
+  :root{
+    --bg:#0e1420; --card:#151c2b; --panel:#111827; --line:#263143; --line-soft:#1d2740;
+    --ink:#e6edf6; --ink2:#a8b3c4; --ink3:#77839a;
+    --blue:#5aa9f7; --good:#4cc38a; --warn:#e8c35a; --serious:#f0936b; --crit:#ef6b6f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.75 "PingFang SC","Microsoft YaHei","Noto Sans CJK SC",
+    -apple-system,"Segoe UI",sans-serif;}
+  .sheet{max-width:980px;margin:0 auto;padding:44px 52px 72px;background:var(--card);
+    border:1px solid var(--line-soft);box-shadow:0 0 40px rgba(0,0,0,.5);}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:.4px}
+  .sub{color:var(--ink3);font-size:13px;margin-bottom:20px}
+  h2{font-size:18.5px;margin:42px 0 14px;padding-left:12px;border-left:4px solid var(--blue);letter-spacing:.3px}
+  h2:first-of-type{margin-top:24px}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:8px 0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  th{background:#1b2436;font-weight:600;white-space:nowrap;color:var(--ink2)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tbody tr:nth-child(even) td{background:#131a2a}
+  .verdict{border:1px solid var(--line);border-left:5px solid var(--blue);
+    background:#182234;padding:14px 18px;margin:14px 0;border-radius:0 8px 8px 0}
+  .verdict .headline{font-size:16px;font-weight:600}
+  .tiles{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0 6px}
+  .tile{flex:1 1 150px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#1a2334}
+  .tile .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  .tile .k{font-size:12px;color:var(--ink3);margin-top:2px}
+  .sev{display:inline-block;font-size:12px;font-weight:600;padding:1px 10px;
+    border-radius:11px;border:1px solid;white-space:nowrap}
+  .sev.crit {color:#ff9296;border-color:#a34a4e;background:#3a2126}
+  .sev.serious{color:#ffb297;border-color:#a3613f;background:#3a2a20}
+  .sev.warn {color:#f2d888;border-color:#a38c3f;background:#332c1a}
+  .sev.info {color:var(--ink2);border-color:var(--line);background:#1c2536}
+  .prob{border:1px solid var(--line);border-radius:12px;padding:4px 20px 14px;margin:18px 0;background:#141b2c}
+  .prob>h3{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .prob .lbl{color:var(--ink3);font-size:12px;font-weight:400}
+  .prob h4{font-size:13.5px;margin:16px 0 4px;color:var(--ink2);
+    border-bottom:1px dashed var(--line);padding-bottom:3px;letter-spacing:.5px}
+  .prob ol,.prob ul{margin:6px 0;padding-left:22px}
+  .prob li{margin:4px 0}
+  .appx{font-size:13px;color:var(--ink2)}
+  .appx h2{border-left-color:var(--ink3)}
+  #fig-timeline{margin:4px 0 10px}
+  #fig-timeline figcaption{font-size:12px;color:var(--ink3);margin:2px 0 4px}
+  .figbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+  .figbody .panel{border:1px solid var(--line);border-radius:10px;padding:6px 10px 10px;background:var(--panel)}
+  .panel-svg{display:block;width:100%;height:auto}
+  .panel-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:2px 0 0}
+  .panel-title{font-size:11.5px;color:#c3cddd;font-weight:600}
+  .legend{display:inline-flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:#9aa6ba}
+  .legend .lg{display:inline-flex;align-items:center;gap:4px}
+  .legend .lg i{display:inline-block;width:11px;height:3px;border-radius:2px}
+  #tip{position:fixed;display:none;pointer-events:none;background:#0b101bee;color:var(--ink);
+    font-size:12.5px;line-height:1.55;padding:7px 11px;border-radius:8px;border:1px solid var(--line);z-index:9}
+  footer{margin-top:52px;border-top:1px solid var(--line);padding-top:10px;font-size:12px;color:var(--ink3)}
+  /* ---- 左侧目录（2026-11-03 用户令：快速定位） ---- */
+  html{scroll-behavior:smooth}
+  .sheet h2,.sheet h3{scroll-margin-top:16px}
+  #toc{position:fixed;left:16px;top:0;bottom:0;width:220px;padding:26px 4px 26px 0;
+    overflow-y:auto;font-size:12.5px;line-height:1.7;z-index:5}
+  #toc .toc-h{font-size:11px;letter-spacing:3px;color:var(--ink3);margin:0 0 10px 12px}
+  #toc a{display:block;color:var(--ink3);text-decoration:none;padding:3px 10px 3px 12px;
+    border-left:2px solid var(--line-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #toc a.sub{padding-left:26px;font-size:12px}
+  #toc a:hover{color:var(--ink2);background:#1a2334}
+  #toc a.on{color:var(--blue);border-left-color:var(--blue);background:#182234}
+  @media (max-width:1420px){
+    #toc{display:none}
+  }
+  @media print{
+    #tip{display:none!important}
+    #toc{display:none!important}
+  }
+</style>
+</head>
+<body>
+<nav id="toc" aria-label="目录"></nav>
+<div class="sheet">
+
+<h1>{{实例名}} AWR 分析报告</h1>
+<div class="sub">{{快照区间起止}} · 分析日期 {{YYYY-MM-DD}} · 数据来源 {{源报告文件名}}（vb_tool awrrpt {{版本}}）+ {{analyze_log 报告名 或 "无"}}</div>
+
+<table>
+  <tr><th>实例</th><td>{{实例名/角色/端口}}</td><th>主机</th><td>{{主机名 · OS · 架构}}</td></tr>
+  <tr><th>数据库</th><td>{{发行版与版本}}</td><th>快照窗</th><td>{{起}} ~ {{止}}（Elapsed {{n}}s，DB Time {{n}}s）</td></tr>
+  <tr><th>硬件</th><td>{{核数 · 内存 · 数据盘介质：如 "vda=HDD(mq-deadline)"}}</td><th>配套输入</th><td>{{analyze_log 报告名 或 "无"}}</td></tr>
+</table>
+
+<h2>一、总体结论</h2>
+<div class="verdict">
+  <div class="headline">{{健康结论：正常 / 关注 / 异常}} —— {{一句话：最要紧的 1~3 件事是什么，
+  资源侧有没有瓶颈（明确说是/不是，依据是哪几个数，IO 类结论注明盘体介质与所用阈值）}}</div>
+  <p>{{最多 3 句：本快照区间最要紧的问题是几条、分别占多少（与下文编号对应，
+  headline 说几件就是几件、动词口径一致）、资源侧是否被拖住。
+  不写"某某正常""某某无异常"这类背书句}}</p>
+</div>
+<div class="tiles">
+  <div class="tile"><div class="v">{{AAS}}</div><div class="k">平均活跃会话（{{每核}} /核）</div></div>
+  <div class="tile"><div class="v">{{n}}%</div><div class="k">DB CPU 占 DB Time</div></div>
+  <div class="tile"><div class="v">{{n}}%</div><div class="k">缓冲命中率</div></div>
+  <div class="tile"><div class="v">{{n}}%</div><div class="k">OS 平均 busy（iowait {{n}}%）</div></div>
+  <div class="tile"><div class="v">{{盘体}}</div><div class="k">数据盘介质（Rot）</div></div>
+</div>
+
+<h2>二、问题与建议</h2>
+<!-- 按严重度降序。每张卡片：标题=结论本身；现象(≤2 句)；证据表(≤4 行)；原因分析(≤3 句，
+     到机制)；建议(≤3 条)。正常面、背景指标不进卡片。
+     IO 延迟类问题的"原因分析"第一句先交代盘体（HDD/SSD）与阈值口径。
+     参数类建议必须写 参数名=当前值 → 建议值（出处：digest 参数段）。
+     没有问题时整节只留一句"本快照区间未发现需要处理的问题"，不列正常项。 -->
+
+<div class="prob">
+  <h3>问题 1 · {{标题：直接说事，如"t_flow_rwzxz 并发更新排队，行锁平均等待 610ms"}}
+      <span class="sev serious">▲ 需要处理</span>
+      <span class="lbl">约占 DB Time {{n}}%（佐证口径：ASP 桶等待计数峰值 {{n}}）</span></h3>
+  <h4>现象</h4>
+  <p>{{≤2 句：谁、在什么时段、表现出来什么（面向读者的白描）}}</p>
+  <h4>证据</h4>
+  <table>
+    <tr><th>数据</th><th class="num">数值</th><th>出处</th><th>说明</th></tr>
+    <tr><td>...</td><td class="num">...</td><td>{{源报告章节名，如 "Active Session History"}}</td><td>...</td></tr>
+  </table>
+  <h4>原因分析</h4>
+  <p>{{≤3 句：机制一句话讲透——等待事件在内核的触发路径（函数级）、
+  锁的持有者/等待者或计划代价特征、哪个参数或并发度放大了它（点名 GUC/sysctl 当前值）。
+  用正常 DBA 语言，不铺陈背景、不用代号。}}</p>
+  <h4>建议</h4>
+  <ol>
+    <li>{{可执行的动作，按优先顺序；改 SQL/计划在前，调参数在后（参数写
+        "参数名 当前值→建议值"），并说明为什么}}</li>
+  </ol>
+</div>
+
+<div class="appx">
+<h2>附录 A · 时间轴明细</h2>
+<figure class="fig" id="fig-timeline">
+  <figcaption>图 A-1 · 时间轴：操作系统 1 分钟序列（CPU / 队列 / 内存 / 磁盘 / 网络）与
+  数据库 5 分钟桶（活跃会话 / 等待计数 / pagewriter / 长事务），悬停看逐点数值。</figcaption>
+  <div class="figbody"></div>
+</figure>
+<div id="tip"></div>
+<p>下表为 OS 分钟序列硬阈值触发的越限时段逐分钟/逐桶明细与多源对齐（OS / ASP / 日志 P-W / 后台堆栈 / pagewriter·长事务），
+供复核。这里的"越限"是序列检测口径，与 39 项健康检查的 ■/▲ 判定是两套口径——
+越限项中被闸层守卫抑制的（如 cpu.r 瞬时尖峰）不构成问题，对应关系见附录 C。</p>
+<table>
+  <tr><th>时段</th><th>操作系统</th><th>数据库等待</th><th>错误日志</th><th>后台堆栈</th><th>pw / 长事务</th></tr>
+  <tr><td>{{mm:ss~mm:ss}}</td><td>{{busy/r/内存/IO}}</td><td>{{活跃/等待计数}}</td><td>{{P 前 10 分钟 / W 窗内}}</td><td>{{线程×条数}}</td><td>{{dirty 峰值 / ltx 峰值}}</td></tr>
+</table>
+
+<h2>附录 B · Top SQL 与等待事件明细</h2>
+<table>
+  <tr><th>SQL ID</th><th>特征</th><th class="num">执行次数</th><th class="num">DB Time / 次数</th><th class="num">每次成本</th><th>归类</th></tr>
+</table>
+<table>
+  <tr><th>等待事件</th><th>类型</th><th class="num">次数</th><th class="num">平均</th><th class="num">合计</th><th class="num">占 DB Time</th><th>说明（含内核触发点）</th></tr>
+</table>
+
+<h2>附录 C · 分析路径说明</h2>
+<p>{{2~5 句：本报告按什么顺序检查了什么（有效性 → 整体负载 → 时间轴四路 →
+事件溯源（se+堆栈+源码三路对齐）→ SQL 维度 → 参数对照），各步骤使用了哪些源数据章节，
+IO 阈值按何种盘体介质取值。分析代号（如有）只在本节使用。}}</p>
+</div>
+
+<footer>生成：vastbase performance · 基于 vb_tool awrrpt/analyze_log 与 digest · {{日期}}</footer>
+</div>
+
+<script>
+const DATA = { meta: {}, bands: [], panels: [] };
+/* ====== 渲染器（2026-11-03：删异常时段底纹带图【用户令】；数据面板悬停取最近点） ====== */
+(function(){
+  const svgNS='http://www.w3.org/2000/svg';
+  const SHEET_W=848, W=393, PH=118, P={l:46,r:10,t:8,b:20};
+  const GRID='#232d40', TICK='#77839a';
+  const compact=v=>v>=1e6?(v/1e6)+'M':v>=1000?(Math.round(v/100)/10)+'K':Math.round(v*10)/10;
+  const fmt=v=>Math.abs(v)>=1000?compact(v):Math.round(v*10)/10;
+  function el(p,n,a,t){const e=document.createElementNS(svgNS,n);
+    for(const k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;
+    p.appendChild(e);return e;}
+
+  // ---------- 数据面板 ----------
+  let tipEl=document.getElementById('tip');
+  if(!tipEl){tipEl=document.createElement('div');tipEl.id='tip';document.body.appendChild(tipEl);}
+  const panels=DATA.panels||[];
+  const figAll=document.querySelector('#fig-timeline .figbody')||document.body;
+  for(let pi=0;pi<panels.length;pi++){
+    const panel=panels[pi];
+    if(!panel.series||!panel.series.length)continue;
+    const times=[...new Set(panel.series.flatMap(s=>s.data.map(d=>d[0])))].sort();
+    if(!times.length)continue;
+    const wrap=document.createElement('div');wrap.className='panel';
+    const head=document.createElement('div');head.className='panel-head';
+    const ttl=document.createElement('span');ttl.className='panel-title';
+    ttl.textContent=panel.title+(panel.gran==='5min'?'（5 分钟桶）':'');
+    head.appendChild(ttl);
+    if(panel.series.length>1){
+      const lg=document.createElement('span');lg.className='legend';
+      panel.series.forEach(s=>{
+        const it=document.createElement('span');it.className='lg';
+        const key=document.createElement('i');key.style.background=s.color||'#2a78d6';
+        it.appendChild(key);it.appendChild(document.createTextNode(s.name));
+        lg.appendChild(it);});
+      head.appendChild(lg);
+    }
+    wrap.appendChild(head);figAll.appendChild(wrap);
+    const svg=document.createElementNS(svgNS,'svg');
+    svg.setAttribute('width',W);svg.setAttribute('height',PH+P.t+P.b);
+    svg.setAttribute('viewBox','0 0 '+W+' '+(PH+P.t+P.b));
+    svg.classList.add('panel-svg');
+    wrap.appendChild(svg);
+    const x=t=>P.l+(W-P.l-P.r)*(times.indexOf(t)/Math.max(1,times.length-1));
+    let mx=0;panel.series.forEach(s=>s.data.forEach(d=>{if(d[1]>mx)mx=d[1];}));mx=mx||1;
+    const y=v=>P.t+PH-PH*(v/(mx*1.12));
+    for(let g=0;g<=3;g++){
+      const gy=P.t+PH-PH*g/3;
+      el(svg,'line',{x1:P.l,x2:W-P.r,y1:gy,y2:gy,stroke:GRID,'stroke-width':1});
+      el(svg,'text',{x:P.l-5,y:gy+3,'text-anchor':'end','font-size':9,fill:TICK},compact(mx*1.12*g/3));
+    }
+    el(svg,'line',{x1:P.l,x2:W-P.r,y1:P.t+PH,y2:P.t+PH,stroke:GRID,'stroke-width':1});
+    const step=Math.ceil(times.length/6);
+    times.forEach((t,i)=>{if(i%step===0)
+      el(svg,'text',{x:x(t),y:P.t+PH+14,'text-anchor':'middle','font-size':9,fill:TICK},t);});
+    panel.series.forEach(s=>{
+      const pts=s.data.filter(d=>times.indexOf(d[0])>=0)
+        .map(d=>x(d[0])+','+y(d[1])).join(' ');
+      el(svg,'polyline',{points:pts,fill:'none',stroke:s.color||'#2a78d6','stroke-width':1.8});
+      if(s.data.length<=120)s.data.forEach(d=>{
+        el(svg,'circle',{cx:x(d[0]),cy:y(d[1]),r:1.6,fill:s.color||'#2a78d6'});});
+    });
+    const cross=el(svg,'line',{x1:0,x2:0,y1:P.t,y2:P.t+PH,stroke:'#1c2430',
+      'stroke-width':.7,'stroke-dasharray':'3 3',opacity:0});
+    svg.addEventListener('mousemove',e=>{
+      const r=svg.getBoundingClientRect();
+      const px=e.clientX-r.left;
+      let best=times[0];
+      times.forEach(t=>{if(Math.abs(x(t)-px)<Math.abs(x(best)-px))best=t;});
+      cross.setAttribute('x1',x(best));cross.setAttribute('x2',x(best));cross.setAttribute('opacity',.6);
+      let html='<b>'+best+'</b>';
+      panel.series.forEach(s=>{
+        const d=s.data.find(d=>d[0]===best);
+        if(d)html+='<br><span style="color:'+((s.color||'#2a78d6')==='#1c2430'?'#fff':(s.color||'#2a78d6'))+'">■</span> '+s.name+' = '+fmt(d[1]);
+      });
+      tipEl.innerHTML=html;tipEl.style.display='block';
+      tipEl.style.left=(e.clientX+14)+'px';tipEl.style.top=(e.clientY+10)+'px';});
+    svg.addEventListener('mouseleave',()=>{tipEl.style.display='none';cross.setAttribute('opacity',0);});
+  }
+})();
+
+/* ====== 左侧目录（自动生成 + 滚动高亮当前节） ====== */
+(function(){
+  const toc=document.getElementById('toc');if(!toc)return;
+  const head=document.createElement('div');head.className='toc-h';head.textContent='目录';
+  toc.appendChild(head);
+  const secs=[...document.querySelectorAll('.sheet h2, .sheet .prob>h3, .sheet .issue>h3')];
+  const items=[];
+  secs.forEach((h,i)=>{
+    if(!h.id)h.id='sec-'+i;
+    const isSub=h.tagName==='H3';
+    const raw=(isSub&&h.firstChild&&h.firstChild.nodeType===3)?h.firstChild.textContent:h.textContent;
+    const label=raw.replace(/\s+/g,' ').trim().slice(0,24);
+    if(!label)return;
+    const a=document.createElement('a');a.href='#'+h.id;a.textContent=label;
+    if(isSub)a.className='sub';
+    toc.appendChild(a);items.push([h,a]);
+  });
+  if(!items.length){toc.remove();return;}
+  const io=new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting)items.forEach(([h,a])=>a.classList.toggle('on',h===e.target));
+    });
+  },{rootMargin:'-12% 0px -72% 0px'});
+  items.forEach(([h])=>io.observe(h));
+})();
+</script>
+</body>
+</html>

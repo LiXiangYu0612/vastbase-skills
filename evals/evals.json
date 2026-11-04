@@ -1,0 +1,35 @@
+{
+  "skill_name": "vastbase",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "分析一下最新那份 AWR 报告，看看有什么问题（需本地样本：fixtures 不入公仓，样本文件名与获取方式见 PUBLISHING.md）",
+      "expected_output": "按 awr-report-analysis.md 全流程：预提取三件产物 → 六步分析 → 产出 <输入名>_analyze.html，数值全部可回溯 digest，图表面板有数据，发现带四要素与佐证口径",
+      "files": ["fixtures/awr_dn_6001_20261028082625_20261028083101.html", "fixtures/analyze_log_dn_6001_20261028082625_20261028083101.html"]
+    },
+    {
+      "id": 2,
+      "prompt": "BufHashTableSearch 在等待事件里占比很高，是不是锁出问题了？",
+      "expected_output": "走 wait-events.md 计数型事件识别：说明这是测量括号（pgstat_report_waitevent 包住 BufTableLookup），waits≈逻辑块访问次数，不是锁阻塞；处置指向减少块访问/提高命中率",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "AWR 里 physical reads 每秒 8000，缓存命中率 91%，帮我看下是不是要加 shared_buffers",
+      "expected_output": "按 bottleneck-patterns.md IO 读链：先问介质（Rot 列定阈值）再四点齐判（命中率+物理读+IO 等待+物理读 SQL 榜）；91% 命中率不能单独定论，避免直接跳参数建议",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "（v2.5.20 新节样本）这份报告的 Cgroup/NUMA/Softirq-IRQ 矩阵怎么看？有没有问题",
+      "expected_output": "digest 第十节出新三块：Cgroup 按 metrics.md 口径读（nr_throttled/throttled Δ=配额咬合→P2 分流；memory.events oom_kill 绝对值；本样本 cpu/memory 均 unlimited、cpuset 0-1）；NUMA 单节点 Local Ratio 100%+DB Share 单列=无跨节点问题不立论；Softirq/IRQ 对应表 Top5 by Δ+每核 %sirq/%irq 饱和峰值（0.2%=安静，≥80% 才单核饱和立论）；样本窗口 6 秒，per-minute 类无数据要写进数据局限",
+      "files": ["fixtures/awr_dn_6001_20261101223019_20261101223025.html"]
+    },
+    {
+      "id": 5,
+      "prompt": "日志报告说有死锁，谁锁谁？怎么处理",
+      "expected_output": "digest 十二章死锁环块直接给 A/B 双方 sessionid/txid+Unique ID+SQL 摘要+锁类型+检测耗时（本样本 ≈1000ms=deadlock_timeout）；进 P5 取证链：死锁环双方 SQL 定位改锁序/缩短事务，与长事务/ASP waitchain 互证；等间隔/业务高峰语境判归责",
+      "files": ["fixtures/analyze_log_dn_6001_20261102084000_20261102085000.html"]
+    }
+  ]
+}

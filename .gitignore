@@ -1,0 +1,7 @@
+# 真实环境样本与内部资产不入公仓（合成样本待做）
+workspace/inbox/*
+!workspace/inbox/README.txt
+workspace/*.xlsx
+evals/fixtures/
+**/__pycache__/
+troubleshooting/crash-case-index.md
