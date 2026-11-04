@@ -65,7 +65,8 @@ kernel/softirq.c（深读）：
 
 ## sys 间歇性冲高：进程 fork 税与 COW+TLB 广播（案例锚点）
 
-VastBase 线程池=**单进程单 mm**（含全部 shared_buffers 页表+私有可写集）。
+VastBase 内核为线程模型（每会话与后台角色各为线程，**单进程单 mm**，含全部
+shared_buffers 页表+私有可写集——与任何池化设置无关，线程模型即如此）。
 任何**进程级 fork**（归档命令/备份工具等外部命令）都要复制整套页表并把
 父进程 MAP_PRIVATE 页全部改只读，后果三连（144 核/300G 共享区实测）：
 

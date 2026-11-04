@@ -3,7 +3,8 @@
 ## 环境
 
 - env-E（现场生产库）：CentOS 7.9（内核 3.10.0-1160.el7），144 核 Xeon 8374C，
-  1.5TB 内存；VastBase G100 单实例，线程池模式，shared_buffers 300GB+；
+  1.5TB 内存；VastBase G100 单实例（窗口内 2,953 个 comm=worker 的线程被
+  采样——comm 仅识别不判读，见 stack-reading），shared_buffers 300GB+；
   归档命令疑似配 vb_probackup（形态待取证，见遗留）
 - 取证材料：60 秒 on-CPU perf 采样（`-p` 主进程 `-F 99 --call-graph dwarf`），
   有效窗口 40.7s、22.9 万样本、build-id 对账的 vmlinux 全量符号化
@@ -56,7 +57,7 @@
 
 ## 根因
 
-线程池模型下 archiver 是主进程线程；执行归档命令走 `gs_popen_security`
+VB 线程模型下 archiver 是主进程的后台线程；执行归档命令走 `gs_popen_security`
 （**fork+exec shell+pclose 干等**，src/gausskernel/process/postmaster/
 pgarch.cpp:853）——**每次归档都从全库最胖的 mm 里 fork**。实测税单
 （300G shared_buffers、144 核）：
@@ -72,7 +73,7 @@ pgarch.cpp:853）——**每次归档都从全库最胖的 mm 里 fork**。实�
   合计千万级 IPI——**sys 冲高的主体**
 - ④ 子进程 execve 拆继承的 300GB 址空间（exit_mmap）再 **5.4s**
 - 对照：PG 原版 archiver 是独立小进程（不碰 buffer 页、页表稀疏、fork
-  便宜）；线程池把 archiver 并进主进程 mm 是放大器——**架构税非代码 bug**
+  便宜）；线程模型把 archiver 并进主进程 mm 是放大器——**架构税非代码 bug**
 
 ## 处置与结果
 

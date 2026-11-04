@@ -218,7 +218,7 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
 | Shmem | 共享内存（含 tmpfs） | 超出 DB 共享区应有量 | `df -h /dev/shm`、`ipcs -m` 找 tmpfs/SysV 挂账 |
 | SReclaimable | 可回收 slab（dentry/inode 缓存） | 大而无妨（压力下自动回收，已计入 Available） | 与 SUnreclaim 分开看，别合并判 |
 | SUnreclaim | 不可回收 slab | **持续涨=内核对象泄漏** | `slabtop` 定对象；见下文 Slab 泄漏节 |
-| KernelStack | 每线程一份内核栈 | 线程数巨大时线性放大（万线程=百 MB 量级；单份大小=THREAD_SIZE，按内核版本⚓） | 对线程数（`ps -eLf` 计数 / 线程池规模） |
+| KernelStack | 每线程一份内核栈 | 线程数巨大时线性放大（万线程=百 MB 量级；单份大小=THREAD_SIZE，按内核版本⚓） | 对线程数（`ps -eLf` 计数 / db_proc Threads） |
 | PageTables | 页表 | 超"活跃映射量/512"应有量；GB 级+未用大页 | 上文页表节（fork 税链） |
 | Committed_AS / CommitLimit | 已承诺分配 vs 限额 | overcommit_memory=2 时比值逼近 1 → 新分配被拒（库内 OOM 报错的库外成因之一） | `cat /proc/sys/vm/overcommit_*`；=0 时该比值仅记账 |
 | VmallocUsed | vmalloc 区（模块/大块内核分配） | 异常增长 | `/proc/vmallocinfo` 按调用者聚合 |

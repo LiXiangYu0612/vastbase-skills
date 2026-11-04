@@ -40,7 +40,7 @@
   双链回溯分叉定责）**、**crash-case-index（55 条内部缺陷库判例速查，栈指纹
   对号；含内网链接，公仓发布前排除）**、**cpu-sys-high（sys% 高四层分诊：
   静态形态→计数器对齐（/proc/interrupts CAL/TLB 行=广播 IPI 直接信号）→
-  perf 栈指纹判据表→定责对账；含 `-p` 三盲区与线程池 fork 税放大器）**
+  perf 栈指纹判据表→定责对账；含 `-p` 三盲区与单进程大 mm fork 税放大器）**
   （止损流程层：先保全后定位，机制一律引用 internals/linux 不复制；
   stack-reading=BACKTRACELOG/调用栈解读，机制挂 error-fatal）
 - **高可用层（ha/，7）**：replication-lag（三段分解出口）、

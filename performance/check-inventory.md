@@ -34,7 +34,7 @@
 | OS · 网络（网卡/TCP/RTT/softnet/conntrack） | 丢包分层（ring/backlog/预算/队列/表满）、重传、RTT 劣化、短连接风暴、accept 队列饱和 | P11 / 症状 11 |
 | OS · dmesg | 内核级硬证据（OOM/存储/文件系统） | P7 等 |
 | OS · System Activity（cs/intr/forks/fd） | **Forks/s=进程+线程 churn 速率**（周期性突增=归档/外部命令 fork 指纹，联动 sys 高分诊与 env-E 判例）、切换风暴总量（配 cpu.md cswch/nvcswch 分列判读）、中断总量、fd 逼近上限 | P1 / P2 / sys 高 |
-| OS · db_proc（postmaster 段） | **Threads Δ=线程池膨胀**、nvcswch 高=CPU 争抢实锤、VmRSS 涨势、cpuset 钉核核查 | P1 / P7 / sys 高 |
+| OS · db_proc（postmaster 段） | **Threads Δ=线程数膨胀（连接/后台线程增长与 churn）**、nvcswch 高=CPU 争抢实锤、VmRSS 涨势、cpuset 钉核核查 | P1 / P7 / sys 高 |
 | 后台线程表（Thread/PID/State/WaitEvent） | **关键后台线程缺席/State 异常=停摆**（archiver/WALwriter/pagewriter 消失即 P4/P9 级，env-E 的 archiver fork 即此线） | P4 / P9 / sys 高 |
 | Load Profile | 吞吐/会话/SQL 速率画像（证据层） | 全形态证据 |
 | Cache Hit Ratio | 命中率真低（配物理读四点齐） | P3 |
