@@ -28,7 +28,7 @@
 | OS · Cgroup | **配额限流咬合、cpuset 给核少、cgroup OOM** | P2 / P7 |
 | OS · NUMA | 跨节点访存、库内存落点失衡 | 症状 11（延迟抖动/整体慢） |
 | OS · Softirq/IRQ 矩阵 | 中断/软中断风暴、**单核打满**（均值盲区） | P2 / P11 |
-| OS · 内存（meminfo/per-min/碎片/THP/页表） | 换页真不足、水位将破、碎片化、压缩停顿、页表是否肥大（fork 税读数；★PageTables/VmPTE 未采集=采集缺口，见 linux/memory.md 页表节） | P7 / sys 高 |
+| OS · 内存（meminfo/per-min/碎片/THP） | 换页真不足、水位将破、碎片化、压缩停顿、**构成逐项哪里异常**（Anon/Shmem/Slab 两半/KernelStack/PageTables/Committed——逐键判读表见 linux/memory.md 全景节；★meminfo 仅采 4 键=构成拆解采集缺口） | P7 / sys 高 |
 | OS · Disk（身份列+await） | 介质档判定、读写延迟、IO 拥塞 | P3 / P4 |
 | OS · Filesystem Usage | 空间/inode 逼近满（pg_xlog/pg_arch 盘满=WAL 停写高危） | P4 / P9 |
 | OS · 网络（网卡/TCP/RTT/softnet/conntrack） | 丢包分层（ring/backlog/预算/队列/表满）、重传、RTT 劣化、短连接风暴、accept 队列饱和 | P11 / 症状 11 |

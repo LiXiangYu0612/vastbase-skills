@@ -201,6 +201,57 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
 4. 内核自动迁移 `zone_reclaim_mode`/`numa_balancing` 会引入迁移抖动，DB
    场景多关自动、手工定布局（版本注记：3.10 无 numa_balancing）
 
+## 内存构成全景：meminfo 逐键判读（"哪里异常"对号表）
+
+> 先定性后处置，**不预设结论**——每行异常有各自的去向，大页只是"页表肥大"
+> 这一个分支的处置。口径全部出自 fs/proc/meminfo.c（同来源锚）；采集现状
+> 见文末缺口。
+
+| 键 | 是什么 | 何时可疑 | 下一步 |
+|---|---|---|---|
+| MemAvailable | 可用水位（非 free，见上节） | ≤10%/20% | P7 水位链 |
+| Buffers/Cached | 页缓存（DB=双缓存结构，见下文专节） | Cached 高但读仍走物理 IO | buffer-manager 命中率对账 |
+| Active(file) / Inactive(file) | 页缓存冷热两链（近似 LRU 新旧代） | Cached 大但 Inactive(file) 占比小=热集大，压力下**可回收余量小**；只涨不降=工作集真在长 | 与 Cached 对账；压力窗看 pgsteal 来源 |
+| Active(anon) / Inactive(anon) | 匿名页冷热两链 | 同上口径；注意 anon 的回收**只有换出一条路**（无 swap 则整类不可回收） | 换页链（P7） |
+| Unevictable | 不可回收驻留（mlock/特殊映射） | 存在量可观即永久挤压 | 找 mlock 持有者（`/proc/<pid>/smaps` grep locked） |
+| SwapCached / SwapTotal | 换页与换出缓存 | pswpout 持续>0 | P7 回收链 |
+| AnonPages | 进程私有匿名页（堆/jemalloc/线程栈） | 持续涨且 DB 上下文同步涨=真消费；DB 侧不涨=库外进程 | 对 Database Memory / Max Session Memory 对账；库外→进程 RSS 榜 |
+| Shmem | 共享内存（含 tmpfs） | 超出 DB 共享区应有量 | `df -h /dev/shm`、`ipcs -m` 找 tmpfs/SysV 挂账 |
+| SReclaimable | 可回收 slab（dentry/inode 缓存） | 大而无妨（压力下自动回收，已计入 Available） | 与 SUnreclaim 分开看，别合并判 |
+| SUnreclaim | 不可回收 slab | **持续涨=内核对象泄漏** | `slabtop` 定对象；见下文 Slab 泄漏节 |
+| KernelStack | 每线程一份内核栈 | 线程数巨大时线性放大（万线程=百 MB 量级；单份大小=THREAD_SIZE，按内核版本⚓） | 对线程数（`ps -eLf` 计数 / 线程池规模） |
+| PageTables | 页表 | 超"活跃映射量/512"应有量；GB 级+未用大页 | 上文页表节（fork 税链） |
+| Committed_AS / CommitLimit | 已承诺分配 vs 限额 | overcommit_memory=2 时比值逼近 1 → 新分配被拒（库内 OOM 报错的库外成因之一） | `cat /proc/sys/vm/overcommit_*`；=0 时该比值仅记账 |
+| VmallocUsed | vmalloc 区（模块/大块内核分配） | 异常增长 | `/proc/vmallocinfo` 按调用者聚合 |
+| HugePages_Total/Free/Rsvd | 大页预留与用量 | Reserved 高而 Free/Rsvd 恒定=**预留浪费（白占内存）** | 校 `vm.nr_hugepages` 与实际用量 |
+
+进程级三键（主进程 `/proc/<pid>/status`）：**VmRSS** 对 DB 上下文之和做差——
+差值大=非上下文消费（库自身结构/分配器碎片/库外借宿）；**VmPTE** 见页表节；
+**VmSwap** 显著=主进程被换出（数据库主进程被换出本身即事故级异常，先查
+swap 诱因再谈别的）。
+
+### 构成 × 水位联动（判读主链，机制详见"水位线/kswapd"两节）
+
+可回收性从高到低 ≈ 干净 Inactive(file) → SReclaimable → 脏页（先写回）→
+anon（有 swap 才可能）→ **不可回收**（SUnreclaim、Unevictable、无 swap 时的
+全部 anon、PageTables 等结构性开销）。据此三问：
+
+1. **涨的类可回收吗？**——涨 Cached/SReclaimable 而水位稳、无换页=正常缓存
+   增长，不处置；涨 SUnreclaim/Shmem 锁定/Unevictable=水位迟早破，提前挂账
+2. **水位将破时谁挡路？**——pgscan 高而 pgsteal 低=回收空转，此时占量大且
+   不可回收的那一类就是异常类（联动 per-min 的 pgscan/pgsteal/pswpin/pswpout）
+3. **到 OOM 时谁幸存？**——被 kill 前回收不动的那块=结构性超额（无 swap 的
+   anon / SUnreclaim 泄漏 / Committed_AS 顶死 CommitLimit）
+
+跨表对账：per-min 回收计数 × meminfo 构成 × 水位三线（/proc/zoneinfo 的
+min/low/high）——**三源同向才定论**，单看"内存用了多少"不构成判断。
+
+★采集缺口（AWR OS 段现状）：meminfo 只采 MemTotal/MemAvailable/SwapFree/Slab
+四键 + 大页开关 sysctl——**构成拆解（AnonPages/Shmem/Active/Inactive 四链/
+Unevictable/SReclaimable/SUnreclaim/KernelStack/PageTables/Committed_AS）与
+进程级 VmRSS/VmPTE/VmSwap 均未采集**。OS 侧"哪里异常"目前要手工补一次
+`cat /proc/meminfo` + `grep Vm /proc/<主pid>/status`（两条只读命令补全整表数据源）。
+
 ## 判读速查（现象 → 命令 → 机制）
 
 | 现象 | 命令 | 机制指向 |
