@@ -137,8 +137,8 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   VmPTE 达 GB 级且 HugePages 未启用 → 页表肥大。危害不在驻留（几百 MB 无妨），
   在 **fork 税**：`copy_page_range`（kernel/fork.c）按页表总量整拷——GB 级页表
   = 秒级单核停摆，且遍历中把父进程 MAP_PRIVATE 页改只读，引发 COW 风暴 +
-  全核 TLB 广播（env-E 实测：fork 停摆 3.2s + 4.5s 风暴；VmPTE GB 级读数为
-  **现场口述待取数确认⚓**，成分拆解见判例遗留，见
+  全核 TLB 广播（env-E 实测：fork 停摆 3.2s + 4.5s 风暴；VmPTE ≈5GB 已现场实查确认
+  2026-11-05，成分拆解仍开⚓——共享区理论份额仅 ~0.6G，见
   `../cases/case-env-E-sys-spike-archiver-fork-202611.md` 与
   `../troubleshooting/cpu-sys-high.md` fork 税节）
 - 处置：`enable_huge_pages`（HugeTLB）——共享区份额归零：fork 停摆与 exec
