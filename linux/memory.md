@@ -245,18 +245,20 @@ anon（有 swap 才可能）→ **不可回收**（SUnreclaim、Unevictable、�
 跨表对账：per-min 回收计数 × meminfo 构成 × 水位三线（/proc/zoneinfo 的
 min/low/high）——**三源同向才定论**，单看"内存用了多少"不构成判断。
 
-★采集与渲染现状（2026-11-04 核实）：采集层**全量** `cat /proc/meminfo`；
-AWR 的 **OS Memory Usage 表已渲染 20 键**（MemTotal/Free/Available、
-Buffers/Cached、Active×3/Inactive×3、Slab 两半、Shmem、Dirty/Writeback、
-**PageTables**、Mapped、Swap×2）——本表大部分判读在报告里直接有数。真缺口
-三条：①渲染缺 KernelStack/AnonPages/Committed_AS/Unevictable/AnonHugePages/
-Vmalloc（数据已在采集包，渲染侧补齐即可）；②进程级 VmRSS/VmPTE/VmSwap
-未采集（诊断 fork 税/主进程被换出时手工 `grep Vm /proc/<主pid>/status`）；
-③zoneinfo 水位三线（min/low/high）未采集。
+★采集与渲染现状（2026-11-04 三轮核实终版）：采集层全量 `cat /proc/meminfo`
++ `/proc/zoneinfo`（水位）+ buddyinfo（碎片）+ postmaster 的
+`/proc/<pid>/status`（VmSize/VmRSS/Threads/cpuset/上下文切换，db_proc 段）。
+渲染已覆盖：OS Memory Usage 表 20 键（含 PageTables/LRU 四链/Slab 两半/
+Mapped/Dirty）、zone 水位/碎片表、postmaster 进程段。真缺口收敛为两条：
+①渲染缺 6 键——KernelStack/AnonPages/Committed_AS/Unevictable/AnonHugePages/
+VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 VmPTE/VmSwap 未采
+（db_proc 的 awk 补两个匹配即得；诊断 fork 税/主进程被换出前手工
+`grep -E 'VmPTE|VmSwap' /proc/<主pid>/status`）。
 
-⚠核实教训：查"报告里有没有某指标"时，grep 别用 meminfo 冒号原文格式
-（`PageTables:`），要按渲染形态（HTML 表格 `>PageTables<`）——本节曾因此
-误判"只采 4 键"并写错过采集缺口结论（2026-11-04 更正）。
+⚠核实教训（两次翻车后立此存照）：判"报告缺不缺某指标"，必须**先把报告
+全量提取再 diff**（枚举渲染键 `>Key<`、section 标题、zone 表行），不许拿
+局部 grep 的"没搜到"直接下"没采集"结论——本节曾先后误判"meminfo 只采
+4 键""zoneinfo/进程级未采集"（grep 形态错/没查就断），2026-11-04 更正。
 
 ## 判读速查（现象 → 命令 → 机制）
 
