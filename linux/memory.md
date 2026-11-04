@@ -139,9 +139,8 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   `../troubleshooting/cpu-sys-high.md` fork 税节）
 - 处置：`enable_huge_pages`（HugeTLB）——共享区页表 ÷500，fork 税归零；
   THP 不解决此问题（私有匿名页动态合并，另有拆分坑）
-- ★采集缺口：AWR OS 段现不含 PageTables/VmPTE（meminfo 只采了 MemTotal/
-  MemAvailable/SwapFree/Slab 等）——诊断 sys 高/fork 税时手工取：
-  `grep PageTables /proc/meminfo; grep VmPTE /proc/<主进程pid>/status`
+- 采集现状：PageTables 已在 AWR OS Memory Usage 表；VmPTE（进程级）未采集
+  ——诊断 fork 税时手工 `grep VmPTE /proc/<主进程pid>/status`
 
 ## Slab 增长与内核对象泄漏（dentry/inode，区别于 fd 泄漏）
 
@@ -246,11 +245,18 @@ anon（有 swap 才可能）→ **不可回收**（SUnreclaim、Unevictable、�
 跨表对账：per-min 回收计数 × meminfo 构成 × 水位三线（/proc/zoneinfo 的
 min/low/high）——**三源同向才定论**，单看"内存用了多少"不构成判断。
 
-★采集缺口（AWR OS 段现状）：meminfo 只采 MemTotal/MemAvailable/SwapFree/Slab
-四键 + 大页开关 sysctl——**构成拆解（AnonPages/Shmem/Active/Inactive 四链/
-Unevictable/SReclaimable/SUnreclaim/KernelStack/PageTables/Committed_AS）与
-进程级 VmRSS/VmPTE/VmSwap 均未采集**。OS 侧"哪里异常"目前要手工补一次
-`cat /proc/meminfo` + `grep Vm /proc/<主pid>/status`（两条只读命令补全整表数据源）。
+★采集与渲染现状（2026-11-04 核实）：采集层**全量** `cat /proc/meminfo`；
+AWR 的 **OS Memory Usage 表已渲染 20 键**（MemTotal/Free/Available、
+Buffers/Cached、Active×3/Inactive×3、Slab 两半、Shmem、Dirty/Writeback、
+**PageTables**、Mapped、Swap×2）——本表大部分判读在报告里直接有数。真缺口
+三条：①渲染缺 KernelStack/AnonPages/Committed_AS/Unevictable/AnonHugePages/
+Vmalloc（数据已在采集包，渲染侧补齐即可）；②进程级 VmRSS/VmPTE/VmSwap
+未采集（诊断 fork 税/主进程被换出时手工 `grep Vm /proc/<主pid>/status`）；
+③zoneinfo 水位三线（min/low/high）未采集。
+
+⚠核实教训：查"报告里有没有某指标"时，grep 别用 meminfo 冒号原文格式
+（`PageTables:`），要按渲染形态（HTML 表格 `>PageTables<`）——本节曾因此
+误判"只采 4 键"并写错过采集缺口结论（2026-11-04 更正）。
 
 ## 判读速查（现象 → 命令 → 机制）
 
