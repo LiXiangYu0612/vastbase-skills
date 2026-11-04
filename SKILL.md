@@ -34,6 +34,7 @@ description: VastBase（G100）数据库技能域。覆盖：AWR 报告（vb_too
 | CPU 高 / 系统慢 | 形态 P1/P2 → `performance/bottleneck-patterns.md` + `linux/cpu.md` |
 | sys 高（内核态）/ 周期性 sys 尖峰 / IPI 广播 | 四层分诊 → `troubleshooting/cpu-sys-high.md` + `linux/cpu.md`（判例 `cases/case-env-E-sys-spike-archiver-fork-202611.md`） |
 | IO 慢 / 读写延迟高 | 形态 P3/P4 → 同上 + `linux/io-storage.md` |
+| 备份/归档期间业务变慢 | `backup-recovery/backup-window-performance.md`（fork 税/IO 挤占/检查点/锁四形态，env-E 判例锚） |
 | 卡住 / 锁等待 / 死锁 | 形态 P5 → `bottleneck-patterns.md` + `troubleshooting/blocking-live.md` |
 | 表膨胀 / 清理不及 | 形态 P8 → `internals/autovacuum.md` |
 | 主备延迟 / 同步等待 | 形态 P9 → `ha/replication-lag.md` |

@@ -115,8 +115,9 @@
       点名"这是性能优化？？"）：前两者属常规运维手册且机制件已覆盖域内该有
       部分；A/B diff 是 vb_tool 工具功能不是知识件；批量加载是负载调优指南，
       与"从 AWR/日志诊断现场问题"的域定位不同文体——凑数立账即 AI 腔，戒
-- [ ] **备份窗口性能**——备份期间性能形态/限速策略（env-E 已见备份 fork 税，
-      备份侧资源控制知识未立）
+- [x] **备份窗口性能**——2026-11-05 成篇 backup-window-performance.md（四形态
+      +archive_dest 不 fork 回避+posix_spawn 根治线；附带修正：pg_probackup
+      源码在基线树内且无限速参数=负向实锤）
 - 小锚收口（沿账）：向量化/SMP 执行体⚓ · MemoryContext 拦截函数 · HOT 判定
   函数名 · autovacuum 锁不可得文案 · AuthenticationTimeout 别名 ·
   cgroup v2 swappiness 细节 · fd-vfd/heap-tuple 的 6.0.0 正式树行号对齐

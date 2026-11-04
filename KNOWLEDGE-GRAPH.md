@@ -56,7 +56,7 @@
   optimizer-deep（代价/查询转换/迁移优化深潜总纲）、sqlhc-integration、
   sqlhc-quickref、optimizer-usage、quick-reference + references 深潜系列
   （原独立技能并入，2026-10-26）
-- **备份恢复层（backup-recovery/，1·初版）**：pitr-mechanism
+- **备份恢复层（backup-recovery/，2）**：pitr-mechanism、**backup-window-performance（备份窗口性能四形态：fork 税判例锚/IO 挤占/备份启动强制 checkpoint(xlog.cpp:14766 实锚)/锁形态⚓；archive_dest 不 fork 回避路径+vb_probackup 无限速参数负向实锤）**
   （归档拉取/恢复目标/回放与备库同源）
 - **案例层（cases/）**：判例集（`cases/INDEX.md` 为检索目录）——机制文件
   的实证锚点与判读经验来源，逐案例挂边到对应机制文件

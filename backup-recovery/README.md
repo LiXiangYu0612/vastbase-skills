@@ -6,6 +6,7 @@
 | 文件 | 场景 |
 |---|---|
 | `pitr-mechanism.md` | PITR：归档拉取优先级/恢复读取链/回放同源/恢复决策 |
+| `backup-window-performance.md` | 备份窗口对业务的性能影响：fork 税(env-E 判例)/IO 挤占/检查点交互/锁形态四分型+archive_dest 回避路径+posix_spawn 根治线 |
 
 计划主题（落地后删除本清单）：
 - `backup-strategy.md` 备份策略（全备/增量/轮转保留期——按 RPO/RTO 反推，
