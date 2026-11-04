@@ -81,8 +81,13 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
   MAP_PRIVATE 页全改只读：页表复制税 + COW 风暴 + 全核 TLB 广播 + 子进程
   exec 拆除税。判例（144 核/300G shared_buffers 实测）：3.2s 页表复制 +
   4.5s 内 283MB COW 重拷 + 每页一次 144 核广播 + 5.4s exec 拆除
-- 归档命令执行链：`gs_popen_security` = fork+exec shell+pclose 干等
-  （src/gausskernel/process/postmaster/pgarch.cpp:853）
+- 归档命令执行链：`gs_popen_security` = **经典 fork()**+exec shell+pclose 干等
+  （src/gausskernel/process/postmaster/pgarch.cpp:853；popen_security 体内
+  `switch (pid = fork())` 实锚 common/port/gs_system.cpp:128 一带——非
+  vfork/posix_spawn）。★fork+exec 模式在 Linux 有零页表拷贝路径
+  （posix_spawn=clone(CLONE_VM|CLONE_VFORK)，glibc system/popen 现代实现
+  即走此）——页表整拷与 exec 拆除两笔税**是实现选择非内核必然**，代码级
+  根治=popen_security 换 posix_spawn（与"归档独立进程化"并列的厂商诉求）
 - shared_buffers 越大页表越大（fork 税线性放大）；**HugeTLB 大页=根治共享区
   份额**（enable_huge_pages，src/common/backend/port/sysv_shmem.cpp；
   2MB 大页使 300G 共享区页表 614MB→1.2MB）——★私有映射的页表份额大页
