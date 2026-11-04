@@ -201,7 +201,7 @@
    201|    // 循环扫描分配的块
    202|    for (int block = node->ps_startblock; block < node->ps_startblock + node->ps_nblocks; block++) {
    203|        // 1. 读取块
-   env-T|        Buffer buffer = ReadBuffer(relation, block);
+   204|        Buffer buffer = ReadBuffer(relation, block);
    205|        
    206|        // 2. 扫描块中的元组
    207|        Page page = BufferGetPage(buffer);

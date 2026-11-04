@@ -201,7 +201,7 @@
    201|//   Workers Planned: 4
    202|//   Workers Launched: 4
    203|//   ->  Parallel Seq Scan on big_table  (cost=0.00..308641.97 rows=25000000 width=0)
-   env-T|//
+   204|//
    205|-- 观察:
    206|// - "Workers Planned: 4": 计划使用4个Worker
    207|// - "Workers Launched: 4": 实际启动4个Worker

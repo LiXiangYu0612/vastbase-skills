@@ -201,7 +201,7 @@
    201|        
    202|        // 递归枚举剩余的表
    203|        enumerate_join_orders_bruteforce(remaining_rels, n - 1);
-   env-T|    }
+   204|    }
    205|}
    206|
    207|// 问题: 对于10个表，10! = 3,628,800 种顺序

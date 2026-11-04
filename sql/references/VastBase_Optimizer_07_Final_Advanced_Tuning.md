@@ -201,7 +201,7 @@
    201|    t.quarter,
    202|    SUM(f.net_amount) AS total_sales,
    203|    COUNT(*) AS sales_count
-   env-T|FROM fact_sales f
+   204|FROM fact_sales f
    205|JOIN dim_product p ON f.product_id = p.product_id
    206|JOIN dim_time t ON f.time_id = t.time_id
    207|GROUP BY p.category, t.year, t.quarter;

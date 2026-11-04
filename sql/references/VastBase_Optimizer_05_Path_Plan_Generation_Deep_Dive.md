@@ -201,7 +201,7 @@
    201|
    202|```sql
    203|-- 创建测试表和索引
-   env-T|CREATE TABLE index_test (
+   204|CREATE TABLE index_test (
    205|    id INT PRIMARY KEY,
    206|    name VARCHAR(100),
    207|    age INT,

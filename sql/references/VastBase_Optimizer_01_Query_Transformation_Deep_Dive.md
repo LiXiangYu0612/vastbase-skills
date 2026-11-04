@@ -201,7 +201,7 @@
    201|        
    202|        // 尝试从quals中提取Sublink
    203|        if (j->quals) {
-   env-T|            j->quals = pull_up_sublinks_qual_recurse(root, j->quals, ...);
+   204|            j->quals = pull_up_sublinks_qual_recurse(root, j->quals, ...);
    205|        }
    206|    } else if (IsA(jtnode, RangeTblRef)) {
    207|        // 基表引用，无需处理

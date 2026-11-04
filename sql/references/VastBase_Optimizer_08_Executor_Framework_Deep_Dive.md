@@ -201,7 +201,7 @@
    201|    Plan* plan = queryDesc->plannedstmt->planTree;
    202|    
    203|    // 1. 释放计划节点
-   env-T|    ExecEndNode(plan);
+   204|    ExecEndNode(plan);
    205|    
    206|    // 2. 释放表达式上下文
    207|    FreeExprContext(estate->es_expr_ctx);
