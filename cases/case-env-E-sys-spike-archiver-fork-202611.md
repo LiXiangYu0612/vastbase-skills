@@ -84,19 +84,23 @@ pgarch.cpp:853）——**每次归档都从全库最胖的 mm 里 fork**。实�
 - 快速缓解（不重启）：`wal_segment_size` 调大（16M→256M）降归档频率，
   风暴次数÷16
 
-## 预防
+## 预防（2026-11-05 按成分未明重排：回避路径优先于大页）
 
-1. **2MB HugeTLB 大页**（治①④）：共享区页表 600MB→1.2MB（÷500），fork
-   与 exec 拆除双双归零；openGauss `enable_huge_pages`/`huge_page_size`
-   GUC（src/common/backend/port/sysv_shmem.cpp），内核预留
-   `vm.nr_hugepages`，重启生效。THP≠大页（动态合并私有匿名页，另有
-   拆分风暴坑），保持 never
-2. **降频**：`wal_segment_size` 调大；或归档命令换轻量 cp
-3. `kernel.numa_balancing=0`（el7 数据库惯例，省 ≈3% 底噪）
-4. **反面教材：减 shared_buffers** ——只线性缩①、不治②③、伤命中率，
+1. **archive_dest 形态**（首选，零成本）：归档走 archive_dest 即**不经
+   fork**（pgarch.cpp:608 进程内拷贝）——当场消三税，无需重启窗口
+2. **posix_spawn 化**（厂商诉求）：popen_security 现用经典 fork
+   （gs_system.cpp:128 实锚），换 posix_spawn=零页表拷贝，①④双消
+3. **2MB HugeTLB 大页**：共享区份额 600MB→1.2MB——但 VmPTE 总量 5G 中
+   共享区理论份额仅 ~0.6G，**成分拆解未明前收益占比不定**（见遗留）；
+   openGauss `enable_huge_pages`/`huge_page_size` GUC
+   （src/common/backend/port/sysv_shmem.cpp），内核预留
+   `vm.nr_hugepages`，重启生效。THP≠大页，保持 never
+4. **降频**：`wal_segment_size` 调大（同税少交几次）
+5. `kernel.numa_balancing=0`（el7 数据库惯例，省 ≈3% 底噪）
+6. **反面教材：减 shared_buffers** ——只线性缩①、不治②③、伤命中率，
    负优化
-5. 巡检项：sys 尖峰周期 vs 归档日志时间戳对齐；`/proc/<pid>/status`
-   的 **VmPTE**（GB 级=页表肥大，大页化收益的直接读数）
+7. 巡检项：sys 尖峰周期 vs 归档日志时间戳对齐；`/proc/<pid>/status`
+   的 **VmPTE**（GB 级=页表肥大读数）
 
 ## 关联知识文件
 
@@ -106,7 +110,9 @@ pgarch.cpp:853）——**每次归档都从全库最胖的 mm 里 fork**。实�
 
 ## 遗留
 
-- **页表总量已确认**：VmPTE ≈5GB（现场实查 2026-11-05，原口述读数闭合）；
+- **页表总量已确认**：≈5GB（现场实查 2026-11-05；★口径护栏：按进程级
+  VmPTE 理解，若实为 /proc/meminfo PageTables（全机）则需以命令①输出
+  复核——fork 只拷进程自己的页表）；
   **成分拆解⚓仍开**：共享区理论份额仅 ~614MB@300G，5G 大头若在私有/换出
   区（swap 项 PTE 常驻可解释超物理内存的等价映射量），则大页收益占比有限，
   **archive_dest（不 fork）与 posix_spawn（零拷贝）升级为首选处置**，

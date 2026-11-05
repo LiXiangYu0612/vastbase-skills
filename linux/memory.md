@@ -155,8 +155,9 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   2026-11-05，成分拆解仍开⚓——共享区理论份额仅 ~0.6G，见
   `../cases/case-env-E-sys-spike-archiver-fork-202611.md` 与
   `../troubleshooting/cpu-sys-high.md` fork 税节）
-- 处置：`enable_huge_pages`（HugeTLB）——共享区份额归零：fork 停摆与 exec
-  拆除消除；**私有集 COW 风暴不归大页治**（分工见 cpu-sys-high）；
+- 处置（按优先序）：①归档改 archive_dest=不经 fork（零成本，pgarch.cpp:608）；
+  ②posix_spawn 化（零页表拷贝，见 cpu-sys-high）；③`enable_huge_pages`——
+  共享区份额归零但占总量比例待拆解；**私有集 COW 风暴谁也治不了**（架构问题）；
   THP 不解决此问题（私有匿名页动态合并，另有拆分坑）
 - 采集现状：PageTables 已在 AWR OS Memory Usage 表；VmPTE（进程级）未采集
   ——诊断 fork 税时手工 `grep VmPTE /proc/<主进程pid>/status`
