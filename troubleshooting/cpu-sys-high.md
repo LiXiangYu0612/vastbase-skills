@@ -61,7 +61,7 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
 | do_numa_page→migrate_misplaced_page→migrate_pages→try_to_unmap | NUMA 平衡迁移 | 多为底噪；numa_balancing=0 验证 |
 | _raw_spin_lock* / osq_lock 多核热点 | 自旋争抢 | 找持锁者；对照 `../internals/locks.md` 自旋盲区 |
 | native_flush_tlb_others←flush_tlb_page / smp_call_function_many | TLB/函数广播 IPI | 看 caller 帧定性：wp_page_copy=COW、zap_page_range=munmap/exit、try_to_unmap=migration |
-| copy_pte_range←copy_page_range←dup_mm←copy_process←do_fork | fork 页表税 | 谁在 fork（comm+FORK 事件）；大页化 |
+| copy_pte_range←copy_page_range←dup_mm←copy_process←do_fork | fork 页表税——**仅无 CLONE_VM 的真进程 fork 才有此栈**：线程 clone(CLONE_VM) 共享 mm 零页表拷贝（env-E 对照：53 次线程创建零税 vs 1 次进程 fork 3.2s）；**PERF_RECORD_FORK 事件≠税，判据=子 tgid≠父 pid** | 谁在 fork（comm+FORK 事件）；大页化 |
 | unmap_page_range←exit_mmap←flush_old_exec（sys_execve） | exec/exit 拆址空间税 | 同上 |
 | __schedule / pick_next_task 高占比 | 切换风暴 | pidstat -w 分列；唤醒源分析 |
 | shrink_page_list / shrink_node | 直接回收 | 转内存压力形态 |
