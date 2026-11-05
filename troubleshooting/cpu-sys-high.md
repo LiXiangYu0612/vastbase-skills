@@ -119,7 +119,7 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
 | 共享内存（MAP_SHARED 已触达） | PTE 原样拷（页共享数据不拷） | 无——**本案大头** |
 | 私有可写页 | PTE 拷+父子双改只读（COW 布防） | 无，且埋雷 |
 | swap 占位 PTE | swap 项照拷 | 无（换出≠免拷） |
-| HugeTLB 区 | 无 PTE 层，每 2MB 一个 PMD 表项 | **主力**：600MB→1.2MB |
+| HugeTLB 区 | 无 PTE 层，每 2MB 一个 PMD 表项 | **主力**：614MB→1.2MB |
 | 未触达空洞 | 无 PTE 可拷，空转 | 全免 |
 | MADV_DONTFORK 区 | VMA 整段不继承 | 全免（VB 共享区不适用） |
 

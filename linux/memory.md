@@ -146,7 +146,7 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   `/proc/<pid>/status` 的 `VmPTE`（单进程）；渲染同 fs/proc/meminfo.c
   锚（见来源）
 - 数学：每 2MB 已映射地址空间占 1 张 4KB PTE 页 → **页表量 ≈ 活跃映射量/512**。
-  例：300G 全触达共享内存 ≈600MB 页表
+  例：300G 全触达共享内存 ≈614MB 页表
 
 **fork 的三层账（拷地图不拷领土；kernel 函数级锚，基线同 cgroup 节取法）**：
 - **第 0 层·为什么拷页表**：fork 契约=子进程地址空间视图与父逐位相同，页表即视图；
