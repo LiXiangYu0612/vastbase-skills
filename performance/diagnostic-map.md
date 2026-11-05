@@ -419,7 +419,7 @@ B 计划劣化（★DBA 最高频场景之一）：
 | 症状/结论 | 源码锚 | 知识文件 |
 |---|---|---|
 | work_mem=算子配额；operatorMemKB 估算优先；operatorMaxMem 弹性上限；gs_sysmemory_busy 提前落盘；倾斜调参无效 | `SET_NODEMEM` executor.h:114；memctl.cpp AssignMemOpConsumption ~3090；tuplesort.cpp:550-579；hashjoin.h:99 | `../internals/operator-memory.md` |
-| max_process_memory 进程记账、超限报 53200、与 spill 两层 | ERRCODE_OUT_OF_LOGICAL_MEMORY 分配层拦截 | `../internals/operator-memory.md` |
+| max_process_memory 进程记账、超限报错（YY006/53200 两码两路径）、与 spill 两层 | 记账超限=OUT_OF_LOGICAL_MEMORY(YY006)；OUT_OF_MEMORY=53200 | `../internals/operator-memory.md` |
 | Sort 落盘状态机（write file/fetch tuple 成对=真归并；只 write=单 run） | tuplesort.cpp TSS_*；inittapes:2345 maxTapes=merge_order+1 | `../internals/operator-memory.md` |
 | Temp Spill 榜只统计 Sort+HashJoin（聚合内排序/HashAgg 不计） | vb_tool 采集侧口径（statement 视图列），temp bytes 才是不漏总账 | `../awr-report-reference.md` |
 | waitchain 只对 LOCK；LWLOCK 无阻塞关系 | gs_asp.block_sessionid 仅重量级锁填充；vb_tool run_asp_waitchain_query 只取非空行；LWLock 持有者=pg_stat_get_backend_lwlocks() 专有视图 | `../wait-events.md`（waitchain 适用范围节） |

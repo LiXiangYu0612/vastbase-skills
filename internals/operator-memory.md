@@ -35,7 +35,7 @@ work_mem 可能根本不生效（优化器估算优先）；为什么调参救�
    （SKEW_WORK_MEM_PERCENT=2，hashjoin.h:99）；单算子配额上限 4 GB
    （MAX_OP_MEM，memctl.h:36）。
 7. **max_process_memory 是另一层机制**：进程级记账，超限报
-   53200（ERRCODE_OUT_OF_LOGICAL_MEMORY，分配层统一拦截）；
+   记账超限分配层拦截（2026-11-05 定论：记账超限路径=ERRCODE_OUT_OF_LOGICAL_MEMORY/SQLSTATE **YY006**；53200=另一条 ERRCODE_OUT_OF_MEMORY 路径，两码并存按码分路，详见 operator-memory 码值注意）；
    它管"整个进程还能不能分配"，与算子 spill 决策（"这个算子要不要写临时文件"）
    是两层。调大 work_mem 挤爆的是这一层。
    拦截链已锚〔✅ 2026-11-05 源码定位，四层〕：palloc/palloc0/repalloc →

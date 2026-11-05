@@ -101,7 +101,7 @@ AWR 联动表找数据库侧影子。
 
 ## 9. out of memory / memory is temporarily unavailable —— ERROR 53200
 
-- 机制：进程级内存记账层拦截（ERRCODE_OUT_OF_LOGICAL_MEMORY，分配层多处）；
+- 机制：进程级内存记账层拦截，分配层多处（2026-11-05 定论：记账超限路径=ERRCODE_OUT_OF_LOGICAL_MEMORY/SQLSTATE **YY006**；53200=另一条 ERRCODE_OUT_OF_MEMORY 路径，两码并存按码分路，详见 operator-memory 码值注意）；
   与算子配额是两层（算子配额管 spill 决策，这层管还能不能分配）——完整机制见
   `operator-memory.md`
 - 排查：出现即看 Memory GUCs 配比、会话内存大户、并发×算子配额总量；
