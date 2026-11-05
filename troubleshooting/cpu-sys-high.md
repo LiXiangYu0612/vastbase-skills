@@ -94,6 +94,27 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
   治不了，收益占比以 VmPTE 实测 + pmap 拆解后再判；减 shared_buffers=
   负优化（只缩页表税、不治 COW/广播、伤命中率）
 
+**页表拷贝的完整账（路径定拷不拷，映射定拷多少）**：
+
+| 路径 | 子进程 mm | 页表 | 实例 |
+|---|---|---|---|
+| 经典 fork（无 CLONE_VM） | 新建（dup_mm） | **全量拷**（按下表减免） | popen_security→3.2s |
+| clone(CLONE_VM)（线程） | 共享父 mm | 不进 dup_mm，**零拷** | env-E 53 次线程创建零税 |
+| CLONE_VM\|CLONE_VFORK（vfork/posix_spawn） | 共享+父挂起等 exec | **零拷** | 根治路径 |
+
+仅经典 fork 生效的逐映射减免（dup_mm→copy_page_range 逐 VMA 判定）：
+
+| 映射 | 动作 | 减免 |
+|---|---|---|
+| 共享内存（MAP_SHARED 已触达） | PTE 原样拷（页共享数据不拷） | 无——**本案大头** |
+| 私有可写页 | PTE 拷+父子双改只读（COW 布防） | 无，且埋雷 |
+| swap 占位 PTE | swap 项照拷 | 无（换出≠免拷） |
+| HugeTLB 区 | 无 PTE 层，每 2MB 一个 PMD 表项 | **主力**：600MB→1.2MB |
+| 未触达空洞 | 无 PTE 可拷，空转 | 全免 |
+| MADV_DONTFORK 区 | VMA 整段不继承 | 全免（VB 共享区不适用） |
+
+判读口诀：**子 tgid≠父 pid=交税；热+换出=满税，大页+洞=免**。
+
 ## 判例与关联
 
 - `../cases/case-env-E-sys-spike-archiver-fork-202611.md`（完整判例：采集
