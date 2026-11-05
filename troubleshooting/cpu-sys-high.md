@@ -93,7 +93,11 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
   客户端连入，gausskernel 全树零调用、仅注释提及），服务端只给它一个会话
   线程（CLONE_VM 免税）；vb_probackup/pg_basebackup 客户端直连同理。
   **税只挂在"服务端代跑 shell 命令"的挂接点**（archive_command/
-  restore_command→gs_popen_security 家族），不挂在工具本身
+  restore_command→gs_popen_security 家族），不挂在工具本身——★税在命令
+  解析前已交完，**与命令内容无关**：archive_command 用 cp 与用 vb_probackup
+  同税（fork 3.2s+exec 拆除 5.4s 照交；sh 起来后再 fork cp 那层是瘦 mm
+  免税）——换轻量命令只缩短③命令执行段，减税只有降频（少交几次）与
+  archive_dest（不交）两条路
 - shared_buffers 越大页表越大（fork 税线性放大）；**HugeTLB 大页=根治共享区
   份额**（enable_huge_pages，src/common/backend/port/sysv_shmem.cpp；
   2MB 大页使 300G 共享区页表 614MB→1.2MB）——★私有映射的页表份额大页
