@@ -87,7 +87,13 @@ top + vmstat + mpstat + pidstat 四件套，按读数组合路由：
   vfork/posix_spawn）。★fork+exec 模式在 Linux 有零页表拷贝路径
   （posix_spawn=clone(CLONE_VM|CLONE_VFORK)，glibc system/popen 现代实现
   即走此）——页表整拷与 exec 拆除两笔税**是实现选择非内核必然**，代码级
-  根治=popen_security 换 posix_spawn（与"归档独立进程化"并列的厂商诉求）
+  根治=popen_security 换 posix_spawn（与"归档独立进程化"并列的厂商诉求）。
+  ★对照（2026-11-05 源码核）：**客户端工具全部免税**——gs_dump/gs_dumpall
+  （=pg_dump 族）是独立进程（pg_dump.cpp:587 自有 main，:905 ConnectDatabase
+  客户端连入，gausskernel 全树零调用、仅注释提及），服务端只给它一个会话
+  线程（CLONE_VM 免税）；vb_probackup/pg_basebackup 客户端直连同理。
+  **税只挂在"服务端代跑 shell 命令"的挂接点**（archive_command/
+  restore_command→gs_popen_security 家族），不挂在工具本身
 - shared_buffers 越大页表越大（fork 税线性放大）；**HugeTLB 大页=根治共享区
   份额**（enable_huge_pages，src/common/backend/port/sysv_shmem.cpp；
   2MB 大页使 300G 共享区页表 614MB→1.2MB）——★私有映射的页表份额大页
