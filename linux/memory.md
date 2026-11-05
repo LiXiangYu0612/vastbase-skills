@@ -147,6 +147,19 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   锚（见来源）
 - 数学：每 2MB 已映射地址空间占 1 张 4KB PTE 页 → **页表量 ≈ 活跃映射量/512**。
   例：300G 全触达共享内存 ≈600MB 页表
+
+**fork 的三层账（拷地图不拷领土；kernel 函数级锚，基线同 cgroup 节取法）**：
+- **第 0 层·为什么拷页表**：fork 契约=子进程地址空间视图与父逐位相同，页表即视图；
+  不能懒建（无法预知首访地址）、不能共用一张表（之后 COW/改权限要各自演化 PTE）——
+  **fork 拷映射记录，一页数据不拷**（dup_mmap→copy_page_range）
+- **第 1 层·逐映射判定**：PRIVATE 已触达=拷 PTE+页引用+1+**父子写位双清零**（布防）；
+  **SHARED（共享内存）=拷 PTE+引用+1+保留可写**（本来共享，无 COW）；swap 项照抄；
+  空洞无 PTE 可抄
+- **第 2 层·数据页何时真拷（COW 惰性）**：PRIVATE 页**纯读永不拷**；**首次写**→
+  do_wp_page：引用>1 → wp_page_copy（此刻才分配新页+拷内容，env-E 的
+  72,646 次/283MB 全在此）；引用=1 → wp_page_reuse（免拷复用——**每页只拷一次**，
+  风暴自熄的机制）；SHARED 页**连写都不拷**
+- 归位口诀：**fork 税=地图大小（页表），COW 风暴=写行为+私有页数，共享内存两头都免数据拷**
 - **判读"过大"**：VmPTE/PageTables 明显超过"映射量/512"的应有量，或单进程
   VmPTE 达 GB 级且 HugePages 未启用 → 页表肥大。危害不在驻留（几百 MB 无妨），
   在 **fork 税**：`copy_page_range`（kernel/fork.c）按页表总量整拷——GB 级页表
