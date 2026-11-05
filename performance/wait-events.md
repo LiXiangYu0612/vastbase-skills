@@ -172,6 +172,28 @@ se:            该事件的 Triggers（file:line）与语义
 - **判读后果**：锁问题先分型——LOCK 走 waitchain（谁锁谁直给）；
   LWLOCK 走 wait_lwlock 桶峰值 + 前台 LWLock 堆栈 + 源码分析。
 
+## gs_asp 锁三列的归属（2026-11-05 源码定论）
+
+- **locktag / lockmode = 请求者（等待者）自己的**，不是持有者的。证据链：
+  会话开始等重量级锁时 `WaitOnLock`（`lock.cpp:1703`）调
+  `ReportWaitLockInfo`（`lock.cpp:1655`），把**本会话自己的**
+  `locallock->tag`（LOCALLOCKTAG `{lock 对象, mode}`，`lock.h:471-474`，
+  mode 即本 backend 申请的锁模式）memcpy 进自己的 BackendStatus
+  （`lock.cpp:1689-1691`）；ASP 采样从每个会话自己的 beentry 取走
+  （`ash.cpp:800-803`）。
+- **block_sessionid 才是持有者**（`lock.cpp:1684-1688`，经 blockProcLock
+  链取到持有 proc 的 sessionid）。一行等待记录的完整语义 = 这个会话在等
+  哪把锁（locktag）、以什么模式申请（lockmode）、被谁挡（block_sessionid）。
+- **持有者的持有模式不在等待行里**：持有者自己那行采样若没在等锁，
+  locktag/lockmode 为 NULL；等别的锁时显示的是它自己的请求。要还原
+  "持有者以什么模式持有"，须结合锁冲突矩阵从请求模式反推（如等待者
+  RowExclusiveLock 被挡 ⇒ 持有者至少持 Share/更高不相容模式）。
+- **waitchain 根阻塞者标注语义**：`sessid(a/iit(事务开始时间))`，
+  a=active、iit=idle in transaction，时间=根阻塞者事务的 xact_start_time；
+  两列齐全（G100 3.0.x，las_flag=3）才有完整标注。**G100 2.2.10 的
+  local_active_session/gs_asp 两列皆无**（事件列是 cur_event，las_flag=2），
+  此类内核上标注退化为裸 sessid——判读时不要把缺失当异常。
+
 ## 常见错误
 
 | 错误 | 为什么错 | 纠正 |
