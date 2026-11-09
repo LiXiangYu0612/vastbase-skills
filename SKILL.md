@@ -117,6 +117,7 @@ vastbase/
 | SQLHC 深度分析流程 | `sql/sqlhc-analysis.md` | 拿到 SQLHC 输出做语句级诊断：P0~P3 优先级、源码级 Cost 复算、报告模板 |
 | SQL 优化深潜总纲 | `sql/optimizer-deep.md` | 代价复算/连接顺序 GEQO/LIMIT 缩放/Function×SMP/隐式转换/Oracle 迁移优化（references 深潜系列索引） |
 | ★OPT_JOIN 代价日志判读 | `sql/references/optjoin-cost-trace.md` | 拿到 pglog 的 OPT/OPT_JOIN debug + 统计信息要复算逐 path sel/rows/cost 与选择过程：行格式→源码计算点对照表、公式代入实测样本（137 行全对账）、add_path/precheck 支配规则、整理五步 SOP |
+| DISTINCT ON×标量子查询求值位置 | `sql/references/distinct-on-subplan-eval.md` | DISTINCT ON 视图等价改写/子查询执行次数评估：VB=去重后置、PG17=去重前置（实测相反）；tie 行翻面与 tiebreaker；`loops` 诊断配方 |
 | SQLHC 配套与速查 | `sql/sqlhc-integration.md` · `sql/sqlhc-quickref.md` · `sql/optimizer-usage.md` · `sql/quick-reference.md` | SQLHC 集成细节、速查表、使用指引（并入件的配套四件） |
 | 核心等待事件源码判读 | `internals/core-events-deep-dive.md` | Top Event 定性：触发路径、正常形态、异常判据（六事件） |
 | 缓冲管理器全流程 | `internals/buffer-manager.md` | BufferAlloc 读取/淘汰/脏页自刷；BufStrategyGet 淘汰压力信号；前台双写因果链 |
