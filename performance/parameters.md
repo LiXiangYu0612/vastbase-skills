@@ -36,6 +36,7 @@ GUC 的死旋钮清单（trace_locks 族 release 未注册等）见
 | shared_buffers | 命中率低+物理读高 且 机器有余量 | 参照 max_process_memory 配比，盲目调大挤会话内存；★fork 税场景禁用"缩 shared_buffers"治病（负优化，见 linux/memory.md 页表节） |
 | random_page_cost | SSD 盘却按默认 4.0 估值 → 优化器不愿走索引（seq_scan 激增佐证） | SSD 建议调低（1.1 左右）；**先看 Rot 列确认介质**；HDD 别乱降 |
 | plan_cache_mode / behavior_compat_options | Plan Time 维霸榜、硬解析高 | 参数化/prepared 语句 |
+| vb_enable_int_varchar_eq_int | 2.2.15 PSU8 起 `INT列='字符串字面量'` 等值比较**两侧都转 NUMERIC** → INT 索引失效、计划翻车（升级引发的隐性回归；PSU8 以前只转字面量为 INT；308 系列无此变更） | 2.2.15 **PSU11+ 默认开启**恢复旧行为；参数 PSU11 才引入，PSU8~PSU10 无参数可救只能改写 SQL（详见 `../sql/references/VastBase_Implicit_Type_Cast_Deep_Dive.md` 场景2B） |
 
 ## 2 IO 读慢
 
@@ -130,6 +131,8 @@ GUC 的死旋钮清单（trace_locks 族 release 未注册等）见
 - 参数名与语义基于 G100 V3 档（advance_xlog_file_num、enable_double_write、
   local_syscache_threshold、thread_pool_attr 等为 VastBase 特有）
 - 其他版本（Postgres 血统直系）参数集有差异，套用前核对
+- vb_enable_int_varchar_eq_int 为 **2.2.15 PSU11 引入**（对应 PSU8 起的隐式转换行为变更）；
+  308 系列（3.0.8）无此行为变更、无此问题，套用前先核版本线
 
 ## 来源
 
