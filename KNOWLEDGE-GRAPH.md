@@ -6,7 +6,7 @@
 
 ## 节点清单
 
-- **机制层（internals/，30）**：operator-memory、buffer-manager、core-events、
+- **机制层（internals/，31）**：operator-memory、buffer-manager、core-events、
   commit-sync、error-fatal、kernel-data-path（枢纽）、locks、query-rewrite、
   query-plan-cache、flush-checkpoint、stats-to-cost、mvcc-visibility、autovacuum、
   opfusion（点查融合：参数族/EXPLAIN [Bypass] 观测/GPC 签名耦合）、
@@ -26,7 +26,9 @@
   双闸配方+debug GUC 死旋钮清单：优化器路径回放/内存核算可开，trace_locks 族
   release 未注册开=无效）、gs-stack-sampling（抓栈机制：5ms SIGURG 窗口/权限硬闸/
   AWR Callstack 段边界）、partition-table（分区目录/裁剪/路由/GPI/EXCHANGE：
-  分区统计在 pg_partition、默认索引 GLOBAL、interval 自动扩=插入路径造 DDL）
+  分区统计在 pg_partition、默认索引 GLOBAL、interval 自动扩=插入路径造 DDL）、
+  smp-stream-parallel（Stream 线程模型：子计划禁并行/STATE_STREAM 四态/
+  配额×dop 内存账/Streaming 计划判读）
 - **操作层（performance/，10）**：awr-report-analysis、awr-report-reference、awr-principles、
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
@@ -144,6 +146,9 @@ page-lsn-mismatch ↔ double-write / wal-replay（pd_lsn 判据同源）。
 - partition-table ↔ fd-vfd-budget·metrics·diagnostic-map 症状9B：超多分区
   的 fd 预算出口（local 索引翻倍）；statio 分区归属（父表行=叶子和）的
   目录侧根源；分区统计陈旧→该分区计划劣化同链
+- smp-stream-parallel ↔ executor-operators·debug-logging-gucs·operator-memory：
+  同一配额底座的 dop 维度（SET_NODEMEM 摊派）；SMP 未生成的内核证据链
+  （debug 配方出口）；AAS 高 CPU 低时四态先于 LOCK 判读
 - debug-logging-gucs ↔ optimizer-deep·operator-memory·wait-events·check-inventory：
   同一组"深入取证"需求的参数出口（计划路径回放配 optimizer-deep 的代价复算、
   memory_tracking 配 operator-memory 的配额口径、锁问题明确不走 debug 参数而走

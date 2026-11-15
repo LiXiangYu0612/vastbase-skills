@@ -139,6 +139,7 @@ vastbase/
 | gs_stack 抓栈机制与 AWR Callstack 段边界 | `internals/gs-stack-sampling.md` | 报告堆栈列 "-" / "not available" 判读矩阵；抓栈 5ms SIGURG 窗口、权限硬闸、语句级失败定位配方 |
 | fd 三层闸与 VFD 预算 | `internals/fd-vfd-budget.md` | "Too many open files"/fd 抖动分诊；max_files_per_process 生效链（postmaster 换算→线程创建快照继承到全部线程）；EMFILE=prlimit 层、VFD 抖动=GUC 层 |
 | 分区表机制与判读 | `internals/partition-table.md` | 分区统计查 pg_partition 不查 pg_class；裁剪五失效形态（PartIterator 份数判读）；interval 自动扩分区=插入路径造 DDL；**默认索引是 GLOBAL（GPI 带 tableoid 隐列）**；EXCHANGE 双 AELock 锁面；超多分区四类代价 |
+| SMP 并行执行（Stream 线程模型） | `internals/smp-stream-parallel.md` | Streaming(type: LOCAL_*) 计划判读；★子计划禁并行（planner.cpp:3202）；STATE_STREAM 等待四态（PRODUCER_READY 最常见）；配额×dop×算子数内存账；"SMP 没生成"六步链 |
 | Heap 元组取属性语义 | `internals/heap-tuple-attr.md` | 老行新列默认值/已删列 NULL 的机制；元组与 tupdesc 长度不一致的读取规则；解析工具同构义务 |
 | autovacuum 机制 | `internals/autovacuum.md` | 触发阈值公式/让路 cancel/mode 门控；★default_statistics_target≤0=autoanalyze 全库关停；膨胀判读 |
 | 复制槽机制 | `internals/replication-slots.md` | restart_lsn=WAL 下界/逻辑槽 xmin/反馈忽略窗 |

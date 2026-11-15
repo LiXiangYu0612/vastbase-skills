@@ -34,7 +34,7 @@
 | 自适应计划选择（gplanmgr/PMGR） | ✅深（11-03 新立：五步框架/CachedPlanInfo 结构/CI 学习/淘汰赛/启用七闸/Choose_adaptive_gplan hint；env-T 全生命周期实测） | adaptive-plan-mgr.md |
 | 统计→选择率 | ✅深；采样：块=Algorithm S、行=蓄水池替换、MCV 阈值+等频直方图构建全深（2026-10-25 二次） | stats-to-cost.md |
 | plan 生成（枚举/DP/geqo/参数化） | ✅深（2026-11-05 references 05 补齐：add_path 四维竞争/FUZZY 因子/geqo 全链/索引路径生成） | query-pipeline.md + sql/references/05 |
-| opfusion / 向量化 / SMP | opfusion ✅深（11-03 成专篇：参数族/双入口/bypass 分型/观测配方）；向量化与 SMP 结构级已锚（2026-11-05），深读待专项 | internals/opfusion.md + executor-operators.md |
+| opfusion / 向量化 / SMP | opfusion ✅深（11-03 成专篇）；**SMP ✅深（2026-11-15 成篇 smp-stream-parallel：Streaming 计划判读/子计划禁并行 planner.cpp:3202/STATE_STREAM 四态/配额×dop 账/六步排查链；线程全生命周期维持⚓）**；向量化结构级已锚深读待专项 | internals/opfusion.md + executor-operators.md + smp-stream-parallel.md |
 | 代价模型/SQLHC 分析/查询转换深潜 | ✅已并入（原独立技能 8 文件迁至 sql/：deep 56KB+sqlhc×3+usage+quickref+references 深潜系列；2026-10-26 用户令"完全并入删源"） | sql/optimizer-deep.md 等 6 件 |
 | 分区表（目录模型/裁剪/路由/GPI/EXCHANGE/统计/超多分区代价） | ✅深（2026-11-15 成篇：pg_partition 目录模型+裁剪五失效形态+interval 自动扩=插入造 DDL partrouting.cpp:102+默认索引 GLOBAL guc.cpp:4934+EXCHANGE 锁面 tablecmds.cpp:28050+分区统计在 pg_partition；⚓=VastBase 侧 default_index_kind 默认值/EXCHANGE 语法待实测对账） | internals/partition-table.md |
 | SQL PATCH 计划固化/语句拦截 | ✅深（2026-11-15 成篇：gs_sql_patch 目录(OID 9050)+unique_sql_id 锚定 hint 注入 sqlpatch.cpp:54-57+ABORT 补丁备库拒建 :175；204 实测 dbe_sql_util 六函数全开） | sql/sql-patch.md |
