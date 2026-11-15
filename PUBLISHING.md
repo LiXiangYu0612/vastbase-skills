@@ -24,14 +24,19 @@
 
 ## 发布时的人工项（维护者拍板）
 
-- [ ] LICENSE（建议与公司/个人策略一致）
-- [ ] 仓库名与 owner（marketplace.json 里 `vastbase-skills` / `LiXiangYu0612`
-      为占位，按实际仓库改）
-- [ ] **`vastbase-sandbox` 是独立 skill 且含内网沙箱配置，不随本仓发布**；
+- [x] LICENSE——**2026-11-15 用户拍板：暂不加**（维持无 LICENSE 状态；将来要加再议）
+- [x] **openGauss 字样口径——2026-11-15 用户拍板：仅源码基线引用可写**：
+      正文描述用 VastBase/Postgres；"版本注记/来源"的基线声明处允许出现
+      openGauss 字样（现状即此口径，维持不改）
+- [x] 仓库名与 owner（已落位：github.com/LiXiangYu0612/vastbase-skills，
+      2026-11-04 首发已推）
+- [x] **`vastbase-sandbox` 是独立 skill 且含内网沙箱配置，不随本仓发布**；
       如要开源沙箱能力，单独剥离配置后另发
-- [ ] 首次 push 前复跑：`python3 scripts/check_graph.py`（六查全绿）+
+- [x] 首次 push 前复跑：`python3 scripts/check_graph.py`（六查全绿）+
       `python3 scripts/verify_anchors.py`（需要本地三棵源码树或环境变量）
-- [ ] README.md 门面核对（当前无内部信息）
+- [x] README.md 门面核对（当前无内部信息）
+- [x] 内部资料排除（crash-case-index gitignore / read-write-splitting
+      出仓 2026-11-15 补真执行 / CM 工单号脱敏 / has-dcs 出处中性化——均闭合）
 
 ## 版本已知问题对照表（待办，非阻塞）
 
