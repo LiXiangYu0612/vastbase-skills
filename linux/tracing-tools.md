@@ -39,6 +39,30 @@
   （含三个判读坑：`grep -cw FORK` 匹配不到下划线粘连的事件名、样本行
   $2 是 tid 不带 pid、COMM 合成事件混入统计）
 
+### 数据库侧采集四事实（VastBase 线程模型，2026-11-05 生产机实测）
+
+> 生产环境=CentOS7 3.10 + perf 3.10；以下四条全部实测，条条都坑过人。
+
+1. **业务后端的 comm 不是 vastbase，是 worker**。VastBase 设置进程标题：
+   postmaster 的 comm=vastbase，业务后端与后台线程=worker / AVCworker /
+   2pccleaner / ashworker / has_agent 等。**按 `^vastbase` 过滤 perf 输出
+   = 业务负载一条不剩（白跑）**。采集后先看 comm 分布再谈热点：
+   `perf script | awk '$0~/cpu-clock/{print $1}' | sort | uniq -c`。
+2. **fp 用户栈残缺，用户态归因必须 dwarf**。内核 CONFIG_FRAME_POINTER=y
+   → `-g`（fp）下内核栈完整，**sys 高分析用 fp 就够**（热点全在内核帧）；
+   但 VastBase 二进制只有约四分之一函数有帧指针序言——fp 采到的用户栈
+   大面积断链。用户态函数归因必须 `--call-graph dwarf`（二进制自带
+   .eh_frame + symtab，dwarf 展开有原料；[unknown] 帧=内联/静态函数，
+   属可接受噪声）。
+3. **dwarf 的代价是栈拷贝**：默认每样本 8192B 栈拷贝 ≈7.6KB/样本
+   （fp 只有几十 B）。量级外推：百核级忙机 99Hz 全局 ≈58MB/s，60s ≈3.5GB
+   ——采集窗口与磁盘预算要按这个算，别开半小时。
+4. **权限**：`perf_event_paranoid=2` 时非 root 连 `-a`（全局）都 EACCES；
+   全局采集（火焰图判负载分布）必须 root——在线 KASLR 下 root 的 kallsyms
+   直接解析，无需离线符号化那套（离线配方是给非 root 采的 kptr_restrict=1
+   场景兜底）。全局命令形态：`perf record -F 99 -a --call-graph dwarf
+   [-p <pid>]`，`-p` 定向单进程可降负载。
+
 ### eBPF / BCC / bpftrace（函数级延迟直方图，off-CPU/IO 延迟神器）
 
 - 内核侧：kernel/bpf/ + kernel/trace/bpf_trace.c；经典一击：
@@ -71,6 +95,9 @@
 |---|---|---|
 | strace 挂库主进程 | 每调用两次停+信号，量级拖慢（ptrace.c:840 机制） | perf trace 或短窗 attach |
 | perf record 不带 -g | 只有符号没有调用路径 | -g + 确认帧指针/符号可用 |
+| **perf 输出按 ^vastbase 过滤** | 业务后端 comm=worker，过滤即白跑（数据库侧四事实①） | 先看 comm 分布再过滤 |
+| **用户态热点用 fp 栈** | 二进制仅约 1/4 函数有帧指针序言，用户栈断链（四事实②） | 用户态归因 --call-graph dwarf |
+| **非 root 跑 perf -a** | paranoid=2 直接 EACCES（四事实④） | root 全局采集/非 root 只 -p |
 | 3.10 机器上装 bcc 工具 | eBPF 版本门槛（版本注记） | ftrace+perf 组合覆盖 |
 | 追踪输出随手写数据目录 | IO 追踪自身污染 IO 读数 | 输出定向独立目录 |
 
@@ -78,7 +105,9 @@
 
 - 基线 7.1-rc4：ftrace/perf/eBPF 全量可用
 - 生产 **env-T = 3.10**：ftrace（基础事件）与 perf 可用；**eBPF/BCC/
-  bpftrace 不可用**（需 4.x+）；`perf trace` 子命令可用性未在该档实测⚓
+  bpftrace 不可用**（需 4.x+）；`perf trace` 子命令可用性未在该档实测⚓；
+  perf 3.10 支持 `--call-graph dwarf`（默认 8192B 栈拷贝）与
+  `perf script -F` 全字段导出（数据库侧四事实即该档实测）
 - PSI（4.20+）见 `cpu.md`；fgraph/fprobe（kernel/trace/）为新内核特性，
   3.10 无
 
@@ -90,6 +119,8 @@
   kernel/ptrace.c:840,991-993（PTRACE_SYSCALL 进出两次语义）、
   kernel/bpf/、kernel/trace/bpf_trace.c（存在性）
 - 生产内核版本实测：env-A uname -r（2026-10-25）
+- 数据库侧四事实：生产机 perf 3.10 全局/定向实测（2026-11-05，root +
+  vastbase 用户双通道；comm 分布/fp-dwarf 同窗口对比/样本体积外推）
 - 《Linux 性能优化实战》动态追踪篇作主题框架参照（口径以源码为准）
 
 ## 知识网
