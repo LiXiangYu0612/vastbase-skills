@@ -118,6 +118,7 @@ vastbase/
 | SQL 优化深潜总纲 | `sql/optimizer-deep.md` | 代价复算/连接顺序 GEQO/LIMIT 缩放/Function×SMP/隐式转换/Oracle 迁移优化（references 深潜系列索引） |
 | ★OPT_JOIN 代价日志判读 | `sql/references/optjoin-cost-trace.md` | 拿到 pglog 的 OPT/OPT_JOIN debug + 统计信息要复算逐 path sel/rows/cost 与选择过程：行格式→源码计算点对照表、公式代入实测样本（137 行全对账）、add_path/precheck 支配规则、整理五步 SOP |
 | DISTINCT ON×标量子查询求值位置 | `sql/references/distinct-on-subplan-eval.md` | DISTINCT ON 视图等价改写/子查询执行次数评估：VB=去重后置、PG17=去重前置（实测相反）；tie 行翻面与 tiebreaker；`loops` 诊断配方 |
+| ★拼接 IN→EXISTS 等价改写 | `sql/references/inlist-concat-to-exists.md` | HIS 老 SQL `col1\|\|col2 IN (select ...)` 改两列等值 EXISTS 的等价性判定：拼接单射前提、幽灵放行机制（实测复现）、16 场景红绿对账配方、rn=1 tie 压行行为 |
 | SQLHC 配套与速查 | `sql/sqlhc-integration.md` · `sql/sqlhc-quickref.md` · `sql/optimizer-usage.md` · `sql/quick-reference.md` | SQLHC 集成细节、速查表、使用指引（并入件的配套四件） |
 | 核心等待事件源码判读 | `internals/core-events-deep-dive.md` | Top Event 定性：触发路径、正常形态、异常判据（六事件） |
 | 缓冲管理器全流程 | `internals/buffer-manager.md` | BufferAlloc 读取/淘汰/脏页自刷；BufStrategyGet 淘汰压力信号；前台双写因果链 |
@@ -136,6 +137,7 @@ vastbase/
 | MVCC 可见性（CSN 快照） | `internals/mvcc-visibility.md` | 可见性核心公式与判定链；长事务卡 vacuum 的机制根源 |
 | gs_stack 抓栈机制与 AWR Callstack 段边界 | `internals/gs-stack-sampling.md` | 报告堆栈列 "-" / "not available" 判读矩阵；抓栈 5ms SIGURG 窗口、权限硬闸、语句级失败定位配方 |
 | fd 三层闸与 VFD 预算 | `internals/fd-vfd-budget.md` | "Too many open files"/fd 抖动分诊；max_files_per_process 生效链（postmaster 换算→线程创建快照继承到全部线程）；EMFILE=prlimit 层、VFD 抖动=GUC 层 |
+__PARTITION_ROW__
 | Heap 元组取属性语义 | `internals/heap-tuple-attr.md` | 老行新列默认值/已删列 NULL 的机制；元组与 tupdesc 长度不一致的读取规则；解析工具同构义务 |
 | autovacuum 机制 | `internals/autovacuum.md` | 触发阈值公式/让路 cancel/mode 门控；★default_statistics_target≤0=autoanalyze 全库关停；膨胀判读 |
 | 复制槽机制 | `internals/replication-slots.md` | restart_lsn=WAL 下界/逻辑槽 xmin/反馈忽略窗 |

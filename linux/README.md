@@ -18,7 +18,7 @@ troubleshooting 现场救火的必经层。本分类从 **DBA 视角**讲 Linux�
   `oom_adj` 范围是旧内核口径（新内核已弃用，改 `oom_score_adj`）；
   `pdflush` 在新内核已并入 per-BDI flusher 线程
 
-## 已落地文件（2026-10-25 五件 + 2026-10-27 补 file-descriptors）
+## 已落地文件（2026-10-25 五件 + 2026-10-27 补 file-descriptors + 2026-11-15 network 补 firewalld reload 节）
 
 - ✅ `cpu.md` — 平均负载/上下文切换/D 状态/软中断；mpstat·vmstat·pidstat·perf；
   内核线程识别（ksoftirqd/kworker/kswapd）；us/sy/si/wa 与 VastBase 现象联判
@@ -27,7 +27,8 @@ troubleshooting 现场救火的必经层。本分类从 **DBA 视角**讲 Linux�
 - ✅ `io-storage.md` — IO 栈三层（VFS→page cache→块层）/inode·dentry 缓存/
   四种 IO 形态/调度器/iostat 口径；与库侧刷脏双层缓冲联判
 - ✅ `network.md` — 收发两流程/半全连接队列/丢包七层排查/conntrack/TIME_WAIT/
-  软中断；与连接风暴、主备同步网络联判
+  软中断/firewalld reload 断连判定（master+0.9.3 源码）；与连接风暴、
+  主备同步网络联判
 - ✅ `tracing-tools.md` — ftrace/perf/eBPF-BCC 取证链；火焰图；
   strace 对数据库的代价与替代
 - ✅ `file-descriptors.md` — fdtable/RLIMIT_NOFILE//proc/<pid>/fd 渲染；DB 侧 fd 分类树（pgsql_tmp 活跃落盘、version.cfg 泄漏、rlimit 逼近）判读依据

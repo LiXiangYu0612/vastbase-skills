@@ -25,7 +25,7 @@
   kernel.sem 是限额非成本/热睡眠路径不走 sem）、debug-logging-gucs（logging_module
   双闸配方+debug GUC 死旋钮清单：优化器路径回放/内存核算可开，trace_locks 族
   release 未注册开=无效）、gs-stack-sampling（抓栈机制：5ms SIGURG 窗口/权限硬闸/
-  AWR Callstack 段边界）
+  AWR Callstack 段边界）__PARTITION_NODE__
 - **操作层（performance/，10）**：awr-report-analysis、awr-report-reference、awr-principles、
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
@@ -138,6 +138,7 @@ page-lsn-mismatch ↔ double-write / wal-replay（pd_lsn 判据同源）。
 - heap-tuple-attr ↔ mvcc-visibility·executor-operators：读同一 HeapTuple 的
   两个正交轴（可见性判过才轮到取值分支链）；slot deform 缓存是执行器
   逐列消费的底座
+__PARTITION_EDGE__
 - debug-logging-gucs ↔ optimizer-deep·operator-memory·wait-events·check-inventory：
   同一组"深入取证"需求的参数出口（计划路径回放配 optimizer-deep 的代价复算、
   memory_tracking 配 operator-memory 的配额口径、锁问题明确不走 debug 参数而走
@@ -170,6 +171,9 @@ page-lsn-mismatch ↔ double-write / wal-replay（pd_lsn 判据同源）。
 - crash-panic ↔ error-fatal·wal-replay·memory：PANIC 家族→回放自愈→OOM 分诊
 - startup-failure ↔ wal-replay·resource-exhaustion：崩溃恢复起点→IPC 残留清理
 - connection-refused ↔ network·parameters：两级连接队列→组 7 旋钮
+- connection-refused ↔ network（firewalld 节）：firewalld reload 丢临时
+  放行→新连接被 REJECT；established 不 reset（conntrack 不清+新规则集
+  established 兜底；iptables 后端仅断流窗靠重传扛）
 - resource-exhaustion ↔ memory·network·operator-memory：四类耗尽→两层闸门分层
 - tracing-tools ↔ wait-events：OS 侧函数级证据 × 库侧等待事件的互证边
 - connection-lifecycle ↔ network·connection-refused·memory·locks：postmaster

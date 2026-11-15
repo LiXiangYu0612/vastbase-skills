@@ -127,6 +127,53 @@ backlog+somaxconn（只买缓冲时间）→ tcp_abort_on_overflow=1（快失败
 - keepalive 首探：内核编译默认 7200s（两层口径与实测见"客户端消失三形态表"；
   env-A 实测 sysctl=30s）——DB 场景仍应靠应用层心跳/连接池探活
 
+## firewalld reload（firewall-cmd --reload 会不会断/reset 连接，源码定论）
+
+**调用链**：`firewall-cmd --reload` → D-Bus `org.fedoraproject.FirewallD1.reload()`
+→ `fw.py :: Firewall.reload()`；`systemctl reload firewalld`（SIGHUP）同一条路。
+精读基线：firewalld **master + v0.9.3 双版本对读**（2026-11-15，用户态源码）。
+
+**reload 六步**（fw.py）：
+`check_on_disk_config()` 校验磁盘配置 →（非 panic）`set_policy("DROP")`
+装"防护门" → `flush()`+`cleanup()` 清运行态 → `_start(reload=True)`
+重读 /etc/firewalld 全部 XML 再分事务重放 → 恢复接口归属（仅
+FlushAllOnReload=no）/NetworkManager 接口 → `set_policy("ACCEPT")` 拆门。
+**conntrack（nf_conntrack）全程不清**——这是"老连接不死"的根。
+
+**两后端行为关键差异**：
+
+| 后端 | reload 窗口内 established | 机制实锤 |
+|---|---|---|
+| nftables（RHEL8+/openEuler 默认） | **全程放行** | set_policy("DROP") 建独立临时表 `firewalld_policy_drop`：filter 三链挂 input/forward/output，优先级 0+10-1=**9**（抢在主表 10 之前），链尾 policy drop + 每链 `ct state established,related accept`（nftables.py `build_set_policy_rules`/`_build_set_policy_rules_ct_rules`；`build_flush_rules` 注释明说这张表不 flush） |
+| iptables（CentOS 7 默认/显式 FirewallBackend=iptables） | **断流窗口**：filter+raw+mangle+security 全部内建链 `-P DROP`（nat 除外），**无 established 例外**；raw PREROUTING 在 conntrack 之前 ⇒ 窗口内所有包（含 established）静默丢弃，等价 mini-panic | ipXtables.py `build_set_policy_rules`（0.6.3/0.9.3/master 三版一致）：只发 `-P`，不插例外规则 |
+
+iptables 后端的断流窗 = set_policy("DROP") 起到 reload 收尾
+set_policy("ACCEPT") 止，覆盖整个 XML 重读+重放时长；窗口内老连接靠
+TCP 重传扛（retries2 机制见上节）——亚秒级无感，规则巨多/慢盘可拖到
+秒级，也只是卡顿+超时，**不是 reset**。
+
+**为什么默认不出 RST**：firewalld 的 REJECT 默认
+`icmp-host-prohibited`（ipXtables.py `DEFAULT_REJECT_TYPE`）/
+`icmpx admin-prohibited`（nftables.py `_reject_fragment`）——发 ICMP 不发
+RST；reload 窗口对新包是链策略 DROP，SYN 静默消失 → 客户端表现 connect
+超时。且新规则集第一条恒为 `ct state RELATED,ESTABLISHED(,DNAT) accept`
+全局兜底——**即使 reload 后配置删了某端口放行，已建立连接照样跑**，
+挂的只是新连接。
+
+**真出 RST/断连的旁因**：rich rule `reject type=tcp-reset`（唯一主动发
+RST 的路径）；`--panic-on`（nftables 用 raw 优先级 drop 无例外/iptables
+PANIC≡DROP 同码路径）；`--complete-reload`（额外卸内核模块）；`conntrack
+-F`（状态蒸发→静默卡死）；以及 DBA 现场最常见的——**runtime-only 放行
+被 reload 丢弃**（临时 `--add-port` 没加 `--permanent`，reload 后新连接
+全被 REJECT，"防火墙断了连接"九成是这条）。
+
+**判读**：后端判定 `firewall-cmd --version` + `grep FirewallBackend
+/etc/firewalld/firewalld.conf`（配置无此键=老版 iptables 后端）；reload 后
+新连接被拒先对账 `firewall-cmd --list-all` vs `--permanent --list-all`；
+窗口时长看 firewalld debug 日志 "Flushing and applying took N seconds"。
+（联动 `../troubleshooting/connection-refused.md` REJECT 分流；本文件
+conntrack 节——表满淘汰与 reload 无关）
+
 ## TCP 关闭链路与"客户端消失、连接还在"（长事务的网络侧根因，深读）
 
 ### 正常关闭（四次挥手）与两个 RST 变体
@@ -395,6 +442,7 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
 | 连接被 RST 掐断 | `nstat -az` TCPAbortOn* 家族 | TcpExt 节：按 abort 原因分流（超时/内存/应用关闭） |
 | 大流量吞吐上不去 | `nstat` TCPMEMORYPRESSURES + `ss -ti` rcv_space | TCP 内存节：窗口×RTT 带宽积限死 |
 | 不知道该查哪块网卡 | `ss -tlnp`+`ip addr`（IP→接口）→ `/proc/net/bonding/`（bond 展开 slave） | 网卡层·bond 节：业务口定位三步 + active-backup 备口零流量属正常 |
+| firewall-cmd --reload 后"连接断了" | `firewall-cmd --list-all` vs `--permanent --list-all` 对账 + `--version`/FirewallBackend | firewalld 节：established 不死（conntrack 不清+兜底规则）；真凶多为 runtime-only 放行被丢 → 新连接被拒 |
 
 ## 常见错误
 
@@ -408,6 +456,7 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
 | conntrack 满当防火墙拦截 | 先淘汰后丢包，是容量问题（nf_conntrack_core.c:205,1463） | count vs max 对账 |
 | RetransSegs 全当网络丢包 | SYN-ACK 重传也计入（tcp_output.c:4644），全队列堆积会抬重传率 | 配 ZeroWindow/rcv_rtt/ListenOverflows 分流真因 |
 | /proc/net/dev 的 drop 归因 backlog | drop 列=rx_dropped+rx_missed_errors 合并渲染（net-procfs.c:53），ring 满混在里面 | ethtool -S 分层定位（网卡层节） |
+| firewall-cmd --reload 会 reset 老连接 | conntrack 不清 + 新规则集第一条 established 兜底（firewalld 节） | 分后端：nftables 老连接全程放行；iptables 后端仅断流窗（重传扛过）；真断的是"新连接"（runtime-only 放行被丢） |
 
 ## 版本注记
 
@@ -416,6 +465,12 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   同样不能开（NAT 有毒）、syncookies/两级队列/TIME_WAIT=60s/retries2 跨版本
   一致
 - tcp_tw_recycle 于 4.12 移除；netdev_budget_usecs 于 4.5 加入
+- firewalld 用户态源码（2026-11-15 三版本对读）：master + v0.9.3 的
+  fw.py/nftables.py/ipXtables.py + v0.6.3 的 ipXtables.py（CentOS 7 原生）。
+  iptables 后端三版同构：set_policy 仅 -P DROP 无例外、DEFAULT_RULES 第一条
+  RELATED,ESTABLISHED ACCEPT、REJECT=icmp-host-prohibited；nftables 临时表
+  防护门在 0.9.3 与 master 一致。0.6.3 的 fw.py 未单独核对（reload 六步以
+  master 为准）
 
 ## 来源
 
@@ -460,6 +515,14 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   （/proc/net/bonding 0444 普通用户可读）；v3.10 bond_main.c:3511 经
   git.kernel.org 拉取核对（同为遍历聚合）
 - 《Linux 性能优化实战》网络篇作主题框架参照（口径以源码为准）
+- firewalld 源码精读（2026-11-15，github firewalld/firewalld master +
+  v0.9.3 + v0.6.3，raw/jsdelivr 拉取）：src/firewall/core/fw.py（reload 六步/
+  set_policy/flush）、src/firewall/core/nftables.py（TABLE_NAME_POLICY=
+  firewalld_policy_drop、build_set_policy_rules、_build_set_policy_rules_
+  ct_rules、NFT_HOOK_OFFSET=10、build_flush_rules 保留临时表）、
+  src/firewall/core/ipXtables.py（build_set_policy_rules 仅 -P DROP、
+  DEFAULT_REJECT_TYPE=icmp-host-prohibited、build_default_rules 第一条
+  RELATED,ESTABLISHED,DNAT ACCEPT）
 
 ## 知识网
 
