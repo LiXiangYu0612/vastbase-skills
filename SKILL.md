@@ -167,6 +167,7 @@ vastbase/
 | 失败判定与切换 | `ha/failover.md` | promote 护栏文案、term 任期、RTO 构成、旧主 rewind（初版·源码先行） |
 | 脑裂成因与防护 | `ha/split-brain.md` | 双主三来源、term 护栏、most_available_sync 降级窗口的数据代价、处置原则 |
 | PITR 机制 | `backup-recovery/pitr-mechanism.md` | 归档拉取/恢复目标/回放同源/恢复决策（初版·源码先行） |
+| 备份恢复演练与翻车形态 | `backup-recovery/backup-restore-drill.md` | 全流程演练配方+13 翻车形态（root 残留文件误诊/限速默认 90MB/s/增量只剩 FULL+PTRACK/套接字 GUC 单数/--time 断粮与补段救急/`Recovery can be done up to` 上限三元组）；★archive off=只有恢复到备份时点可用 |
 | 案例库（判例层） | `cases/INDEX.md` | 找"上次遇到这样解的"：症状关键词→根因→关联知识文件（真实案例+脱敏铁律） |
 | 实例启动失败 | `troubleshooting/startup-failure.md` | 起不来：锁文件残留/端口/IPC/磁盘/权限/损坏/license 按序排查 |
 | 崩溃与 PANIC 现场 | `troubleshooting/crash-panic.md` | 主进程退出/反复重启/PANIC：三件套保全→分诊→crash loop 处置 |

@@ -68,7 +68,7 @@
 | Heap 元组取属性语义 | ✅深（2026-10-30 master 树：heap_slot_getattr 六分支=系统列/deform 缓存/超 tupdesc NULL/PGXC datarow/dropped NULL/短元组 attinitdefval 默认值；工具同构义务入篇；⚓=正式树行号对齐） | internals/heap-tuple-attr.md |
 | checkpoint 生命周期 | ✅深（域重建时已深+今日二次：三道闸/倒退 PANIC/空闲跳过/触发面/KeepLogSeg redo 界；SKILL 路由陈旧"待补"标注已修） | internals/flush-checkpoint.md |
 | 会话视图/备库口径（记忆遗产固化） | ✅固化（n_physical_read≡逻辑读/time 语句末刷/会话退出即清/sid join/备库 LAS 恒 0/gs_asp 冻结/statio 归属——多环境既往实测） | performance/metrics.md |
-| 备份/PITR | ✅初版机制件（RestoreArchivedFile/时间线/回放同源；recovery_target GUC 通道⚓；策略/轮转/演练件待案例） | backup-recovery/pitr-mechanism.md |
+| 备份/PITR | ✅初版机制件（RestoreArchivedFile/时间线/回放同源；recovery_target GUC 通道⚓；策略/轮转件待案例）+ **演练件已落地**（2026-11-15 生产测试机全流程：backup-restore-drill.md，13 翻车形态+PITR 边界定论+限速翻案；archive off=--time 结构性不可用实锤） | backup-recovery/pitr-mechanism.md + backup-restore-drill.md |
 | 案例库（MOS 式判例层） | ✅框架落地（cases/ 三件套：README 规范+INDEX 目录+首例 env-A-ENOSPC；check_graph 对 cases 特殊登记规则）；回填源=报告样本/历史战役/VastBase 文档已知问题/OG tracker | cases/ |
 | 已知问题清单（已知 bug 对照） | ◻ 待补——**VastBase 官方文档为主**（docs.vastdata.com.cn 各版已知问题，2026-10-25 用户令：OG docs 不拉）；OG gitee tracker 仅近似参考：API 端点已验证可用但匿名限流（issues?state=all&per_page=100 分页+过滤 6.0，2026-10-25 全量拉取未成，配方在此） | — |
 

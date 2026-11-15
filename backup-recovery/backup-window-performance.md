@@ -122,7 +122,7 @@ OldestXmin 的长事务"在此形态**不成立或未证**；逻辑导出类长�
 
 | 手段 | 基线源码事实 | 备注 |
 |---|---|---|
-| IO 限速 | **基线选项表无任何限速参数**（threads/timeout/batch-size 等，无 rate/throttle/bandwidth 类字样） | 交付版 vb_probackup 若提供限速参数属交付侧扩展——**参数名以官方手册为准⚓，禁凭记忆写**；基线可用的限速=OS 层 cgroup blkio 套在工具进程外 |
+| IO 限速 | **交付版实测有限速：`-r max-rate`，默认 90MB/s 已启用**（2026-11-15 生产机 vb_probackup 2.4.2 实测：help 有 `[-r max-rate ]`，运行打 INFO "Data transmission rate limiting has been enabled, current maxrate: 90.00 MB/s"；⚠ 推翻了 2026-11-05 "基线选项表无任何限速参数"的推断——开源基线源码选项表与交付二进制能力不同，**限速结论以二进制实测为准**） | 备份窗口预算用 `-r` 显式定值（90MB/s 默认未必匹配存储层设计）；更细粒度仍可叠 OS 层 cgroup blkio |
 | 并行度 | `-j/--threads`（:194；默认 1 :74；上限校验 :790-799，超 nprocs×10 拒绝） | 备份 IO 并发第一旋钮；业务同窗时压小，独占窗口可放大 |
 | checkpoint 形态 | `-C/--smooth-checkpoint`（:202 → backup.cpp:1218 `smooth ? "false" : "true"` 映射 pg_start_backup 的 fast 实参） | 控制**备份启动** checkpoint 是 immediate 还是摊开（形态三） |
 | 读写超时 | `-t/--rw-timeout`（:231） | 是超时保护，**不是限速**，勿混用 |
@@ -153,7 +153,7 @@ OldestXmin 的长事务"在此形态**不成立或未证**；逻辑导出类长�
 | 备份窗业务慢一律归 IO 抢占 | 先看 sys/cs：fork 税在 IO 完全正常时也能卡全体 worker（形态一判例） |
 | 减 shared_buffers 治备份窗变慢 | env-E 反面教材：只线性缩页表税、不治 COW/TLB、伤命中率 |
 | 拿 %util 判备份把盘打满 | util 永不作判读标准；await 分档+绝对 IOPS（io-storage.md） |
-| 凭记忆写 vb_probackup 限速参数 | 基线选项表无 rate 类参数（:190-251 全量提取）；交付版以官方手册为准⚓ |
+| 凭记忆写 vb_probackup 限速参数 | **实测 2.4.2 有 `-r max-rate`（默认 90MB/s 启用）**；开源基线选项表无≠交付二进制无 | 以目标机 `vb_probackup --help` 实查为准 |
 | 物理备份当长事务防膨胀核查项 | 文件拷贝在工具进程本地，SQL 会话只管 start/stop；压 OldestXmin 未锚⚓，现场核对长会话再定 |
 | 备份窗缓冲命中率不降就排除 IO | 备份读不进共享缓冲——命中率不坏恰是 OS 层挤占的旁证，看 iostat |
 

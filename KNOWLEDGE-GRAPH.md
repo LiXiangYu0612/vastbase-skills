@@ -58,7 +58,8 @@
   sqlhc-quickref、optimizer-usage、quick-reference、**sql-patch（计划固化
   与语句拦截：按 unique_sql_id 注入 hint/ABORT 补丁应急杀；204 实测六函数）**
   + references 深潜系列（原独立技能并入，2026-10-26）
-- **备份恢复层（backup-recovery/，2）**：pitr-mechanism、**backup-window-performance（备份窗口性能四形态：fork 税判例锚/IO 挤占/备份启动强制 checkpoint(xlog.cpp:14766 实锚)/锁形态⚓；archive_dest 不 fork 回避路径+vb_probackup 无限速参数负向实锤）**
+- **备份恢复层（backup-recovery/，3）**：pitr-mechanism、**backup-window-performance（备份窗口性能四形态：fork 税判例锚/IO 挤占/备份启动强制 checkpoint(xlog.cpp:14766 实锚)/锁形态⚓；★vb_probackup `-r max-rate` 限速实测翻案——默认 90MB/s 已启用）**、
+  **backup-restore-drill（演练配方+13 翻车形态：root 残留文件→WAL streaming 误诊/增量只剩 FULL+PTRACK/恢复三改本地化/socket GUC 单数/--time 断粮与补段救急/可恢复上限三元组）**
   （归档拉取/恢复目标/回放与备库同源）
 - **案例层（cases/）**：判例集（`cases/INDEX.md` 为检索目录）——机制文件
   的实证锚点与判读经验来源，逐案例挂边到对应机制文件
