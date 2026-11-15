@@ -113,8 +113,18 @@ backlog+somaxconn（只买缓冲时间）→ tcp_abort_on_overflow=1（快失败
   （:1463），淘汰不出来才丢包**——文案实锤：`nf_conntrack: table full,
   dropping packet`（nf_conntrack_core.c:1674；netns 变体 :1676；expectation
   表满 :507）
-- 判读：`/proc/sys/net/netfilter/nf_conntrack_count` 贴 max → 加 max 或
-  规则放行数据库端口减少追踪量；纯 DB 内网机可不加载 conntrack 模块
+- 判读（查满没满）：`/proc/sys/net/netfilter/nf_conntrack_count` 贴
+  `nf_conntrack_max` → 加 max 或规则放行数据库端口减少追踪量；纯 DB 内网机
+  可不加载 conntrack 模块
+- 判读（**查"发生过" drop**，累计计数器单调递增）：首选 `conntrack -S`
+  （conntrack-tools ≥1.4.4，逐 CPU 汇总）；无该工具时解析
+  `/proc/net/stat/nf_conntrack`——首行是列名、其后每 CPU 一行十六进制，
+  三个关键列求和：**drop**（表满被丢的包）、**early_drop**（表满时牺牲旧
+  连接腾位，nf_conntrack_core.c:1463 路径）、**insert_failed**（tuple
+  冲突插入失败）；任一非零=确曾满过（开机累计，非瞬时）。dmesg 的
+  `nf_conntrack: table full, dropping packet` 是 ratelimit 打印——有就是
+  铁证，没有不能排除。awk 按列名取值跨内核版本列集差异安全：
+  `awk 'NR==1{for(i=1;i<=NF;i++)h[$i]=i} NR>1{d+=$h["drop"];e+=$h["early_drop"];f+=$h["insert_failed"]} END{printf "drop=%d early=%d ifail=%d\n",d,e,f}' /proc/net/stat/nf_conntrack`
 
 ### TCP 重试与假死连接（高价值判读）
 - 重传退避：上限 **TCP_RTO_MAX = 120s**（include/net/tcp.h:162-163），
