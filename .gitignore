@@ -5,4 +5,4 @@ workspace/*.xlsx
 evals/fixtures/
 **/__pycache__/
 troubleshooting/crash-case-index.md
-troubleshooting/read-write-splitting.md
+ha/read-write-splitting.md

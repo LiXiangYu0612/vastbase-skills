@@ -57,7 +57,7 @@
 | 流复制架构/切换/脑裂 | ✅初版源码先行（四位点/term 任期/most_available_sync 窗口/DCF 目录实锚；recovery_target 通道⚓；**VastBase 内核+CM 源码不可得→开源 OG 内核+CM 近似基线** gitee.com/opengauss/CM；同步语义表/级联/延迟回放/build 约束/vb_ctl query 已并入 replication-architecture） | ha/ 三件 |
 | HAS+DCS 高可用组件 | ✅文档级（第11课课件入库：四模块/选举/pause/DCS 故障两形态；待实测对账⚓） | ha/has-dcs-architecture.md |
 | CM 集群人工处理清单 | ✅操作级（13 场景手册，含工单依据；工单号发布脱敏） | ha/cm-cluster-manual-ops.md |
-| 读写分离（Hydra-JDBC） | ✅文档级（XS-DB-102：转发规则/切换感知/冲突报错转发；标注内部资料——公仓发布需脱敏重写或排除⚓） | ha/read-write-splitting.md |
+| 读写分离（Hydra-JDBC） | ✅文档级（转发规则/切换感知/冲突报错转发；内容源为内部课件标注"严禁外传"——**2026-11-15 已出仓**：git rm --cached+gitignore 正确路径 ha/（11-05 首次出仓因 gitignore 错写 troubleshooting/ 路径静默失败），留盘本地+路由行加注） | ha/read-write-splitting.md（本地，不入公仓） |
 | Page LSN 报错分析法 | ✅方法论级（双链回溯分叉定责+hash 索引实战范式） | troubleshooting/page-lsn-mismatch.md |
 | 已知崩溃案例索引 | ✅索引级（55 条判例速查；含内网 TAPD 链接——公仓发布前整文件排除⚓） | troubleshooting/crash-case-index.md |
 | 内部资料批次入库（D:\log\1 + D:\二线团队） | ✅2026-11-04 完成（14 份原件入 workspace/inbox/dlog1_20261104；9 新文件+5 扩展；核心断言逐条源码核实，文档↔源码差异记录在案：gplan_is_fqs 前置/compat GUC 定制/解析器路径） | 本行+workspace/inbox |
@@ -100,7 +100,9 @@
 - [x] sqlhc-integration 版本记法统一 V3.0.9（PSU1）
 - [x] cases 命名：envC→env-C；env-odbc 保留（代号位作主题描述符，特例）
 - [x] cpu.md 判读速查标题；os-triage/file-descriptors 常见错误；flush-checkpoint 分立
-- [x] read-write-splitting 内部课件出仓（gitignore+留盘+路由行加注）
+- [x] read-write-splitting 内部课件出仓（gitignore+留盘+路由行加注）；
+      ★2026-11-15 补真执行——原批 gitignore 路径错（troubleshooting/ vs
+      实际 ha/）+缺 git rm --cached，文件一直在公仓；本次 git rm+改路径闭合
 - [x] OOM B 型口径定稿（vb_tool 实采 cgroup v2）；[x] env-E VmPTE 总量确认 ≈5GB
       （现场实查 2026-11-05）；[ ] 成分拆解仍开（pmap 占比→定大页 vs
       archive_dest/posix_spawn 优先级）
