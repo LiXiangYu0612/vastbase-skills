@@ -120,6 +120,7 @@ vastbase/
 | DISTINCT ON×标量子查询求值位置 | `sql/references/distinct-on-subplan-eval.md` | DISTINCT ON 视图等价改写/子查询执行次数评估：VB=去重后置、PG17=去重前置（实测相反）；tie 行翻面与 tiebreaker；`loops` 诊断配方 |
 | ★拼接 IN→EXISTS 等价改写 | `sql/references/inlist-concat-to-exists.md` | HIS 老 SQL `col1\|\|col2 IN (select ...)` 改两列等值 EXISTS 的等价性判定：拼接单射前提、幽灵放行机制（实测复现）、16 场景红绿对账配方、rn=1 tie 压行行为 |
 | SQLHC 配套与速查 | `sql/sqlhc-integration.md` · `sql/sqlhc-quickref.md` · `sql/optimizer-usage.md` · `sql/quick-reference.md` | SQLHC 集成细节、速查表、使用指引（并入件的配套四件） |
+| SQL PATCH 计划固化/语句拦截 | `sql/sql-patch.md` | 症状9B"锁计划"的官方出口：按 unique_sql_id 注入 hint（204 实测 dbe_sql_util 六函数）；ABORT 补丁=应急杀语句；不生效三查（enable/id/不支持 hint 被静默剔除） |
 | 核心等待事件源码判读 | `internals/core-events-deep-dive.md` | Top Event 定性：触发路径、正常形态、异常判据（六事件） |
 | 缓冲管理器全流程 | `internals/buffer-manager.md` | BufferAlloc 读取/淘汰/脏页自刷；BufStrategyGet 淘汰压力信号；前台双写因果链 |
 | ERROR/FATAL 家族机理与排查 | `internals/error-fatal-mechanics.md` | 读 logrpt：每族错误的抛出点、触发条件、排查路径 |

@@ -343,7 +343,8 @@ B 计划劣化（★DBA 最高频场景之一）：
             （stats-to-cost：MCV 边界滑移分诊——同一值在/不在 MCV 边界）
 ③ 佐证    reltuples 与实际行数差、analyze 蓄水池是否轮到该表（大表轮换慢）
 ④ 机制    stats-to-cost（采样→MCV/直方图→选择率→代价）+ 计划缓存被失效重生成
-定论：计划劣化=re-analyze/锁定计划（hint/plan hint）；不是改 SQL 的病。
+定论：计划劣化=re-analyze/锁定计划（hint/plan hint——官方机制=SQL PATCH，
+按 unique_sql_id 注入 hint，见 `../sql/sql-patch.md`）；不是改 SQL 的病。
 ```
 建议：A=参数化/prepared 在前；B=先 re-analyze 看计划回不回来，别急着改 SQL。
 

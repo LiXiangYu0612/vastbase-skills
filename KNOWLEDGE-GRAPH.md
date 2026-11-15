@@ -53,10 +53,11 @@
   选举/pause/DCS 故障两形态）**、**cm-cluster-manual-ops（CM 栈 13 场景人工
   处理清单）**、**read-write-splitting（Hydra-JDBC 读写路由/切换感知/备库
   冲突报错转发）**
-- **SQL 层（sql/，6+references）**：sqlhc-analysis（SQLHC 诊断流程）、
+- **SQL 层（sql/，7+references）**：sqlhc-analysis（SQLHC 诊断流程）、
   optimizer-deep（代价/查询转换/迁移优化深潜总纲）、sqlhc-integration、
-  sqlhc-quickref、optimizer-usage、quick-reference + references 深潜系列
-  （原独立技能并入，2026-10-26）
+  sqlhc-quickref、optimizer-usage、quick-reference、**sql-patch（计划固化
+  与语句拦截：按 unique_sql_id 注入 hint/ABORT 补丁应急杀；204 实测六函数）**
+  + references 深潜系列（原独立技能并入，2026-10-26）
 - **备份恢复层（backup-recovery/，2）**：pitr-mechanism、**backup-window-performance（备份窗口性能四形态：fork 税判例锚/IO 挤占/备份启动强制 checkpoint(xlog.cpp:14766 实锚)/锁形态⚓；archive_dest 不 fork 回避路径+vb_probackup 无限速参数负向实锤）**
   （归档拉取/恢复目标/回放与备库同源）
 - **案例层（cases/）**：判例集（`cases/INDEX.md` 为检索目录）——机制文件
