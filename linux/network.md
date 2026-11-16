@@ -162,7 +162,13 @@ set_policy("ACCEPT") 止，覆盖整个 XML 重读+重放时长；窗口内老�
 TCP 重传扛（retries2 机制见上节）——亚秒级无感，规则巨多/慢盘可拖到
 秒级，也只是卡顿+超时，**不是 reset**。
 
-**为什么默认不出 RST**：firewalld 的 REJECT 默认
+**为什么默认不出 RST（内核源码定论，2026-11-16 补锚）**：REJECT target 的
+行为由 `reject-with` 决定（reject_tg，ipt_REJECT.c:36-64）——九个枚举值里
+七个发 ICMP（nf_send_unreach，:37-57），**只有 `tcp-reset` 一个分支构造 RST**
+（nf_send_reset，nf_reject_ipv4.c:271；`tcph->rst=1` :247）；且规则必须显式
+proto tcp 才允许 tcp-reset（reject_tg_check ipt_REJECT.c:75-82，非 TCP 规则
+EINVAL 拒载），对已是 RST 的包不回（:192-193 No RST for RST）；原包无论如何
+NF_DROP（:65）。内核无默认值（随规则带入），默认值全是用户态的：firewalld 的 REJECT 默认
 `icmp-host-prohibited`（ipXtables.py `DEFAULT_REJECT_TYPE`）/
 `icmpx admin-prohibited`（nftables.py `_reject_fragment`）——发 ICMP 不发
 RST；reload 窗口对新包是链策略 DROP，SYN 静默消失 → 客户端表现 connect
@@ -178,9 +184,17 @@ PANIC≡DROP 同码路径）；`--complete-reload`（额外卸内核模块）；
 全被 REJECT，"防火墙断了连接"九成是这条）。
 
 **判读**：后端判定 `firewall-cmd --version` + `grep FirewallBackend
-/etc/firewalld/firewalld.conf`（配置无此键=老版 iptables 后端）；reload 后
+/etc/firewalld/firewalld.conf`（配置无此键=老版 iptables 后端）；★**查看命令
+随后端分家（2026-11-16）**：iptables 后端（CentOS 7）规则就在内核 filter 表
+zone 链（IN_public 等），`iptables -L INPUT -n -v` 可见含计数器；nftables 后端
+（RHEL8+/openEuler 默认）规则装在 nft 自建表（表名 firewalld），`iptables -L`
+**看不到**（它只读 xtables 兼容表，RHEL8+ 的 iptables 还是 iptables-nft 假体，
+`--version` 带 `(nf_tables)`）——必须 `nft list ruleset`。reload 后
 新连接被拒先对账 `firewall-cmd --list-all` vs `--permanent --list-all`；
 窗口时长看 firewalld debug 日志 "Flushing and applying took N seconds"。
+★REJECT(默认 ICMP) 会 abort 客户端 connect（ECONNREFUSED/EHOSTUNREACH，
+**不堆 SynRetrans**）——客户端 SynRetrans 持续堆积=纯 DROP 形态（DROP 规则/
+链策略/静默队列丢），REJECT 族可排除（除非 ICMP 回程被滤）。
 （联动 `../troubleshooting/connection-refused.md` REJECT 分流；本文件
 conntrack 节——表满淘汰与 reload 无关）
 
