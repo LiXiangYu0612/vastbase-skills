@@ -112,6 +112,34 @@ autocommit=off` 语句仅 B 兼容模式生效；RR 隔离级别下隐式提交�
 影响。排查配方：`select name,setting from pg_settings where name ~ 'timeout'`
 先核超时参数族，再看会话状态 idle in transaction 与驱动类型。
 
+## 断开路径：主动断开何时发 RST（close 语义，2026-11-16 源码定论）
+
+**VB 服务端从不自己构造 RST**——libpq/postmaster 全层无任何
+SO_LINGER(l_onoff=1, l_linger=0) 用法（源码 grep 零命中）；所有断开都是普通
+close()：后端退出 `comm_closesocket(MyProcPort->sock)`（pqcomm.cpp:540）、
+postmaster 拒连 StreamClose→comm_closesocket（:1115-1118）。
+
+**发不发 RST 由内核 tcp_close 决定**（linux net/ipv4/tcp.c）：
+
+- 接收队列**无**未读数据 → 正常四次挥手 FIN，无 RST（:3143
+  data_was_unread=false 路径）
+- 接收队列**有**未读数据（:3168）→ :3185-3189 `tcp_send_active_reset` →
+  **内核替进程发 RST**
+
+判据=断开瞬间 socket 里还有没有没读完的客户端数据：
+
+| 断开场景 | 客户端看到 |
+|---|---|
+| 客户端 X/Q 正常退出，服务端收完再 close | FIN 干净告别 |
+| pg_terminate_backend/session_timeout 踢正在发包的会话 | **RST（ECONNRESET）**——队列几乎必有未读数据 |
+| 认证失败/超时 postmaster StreamClose | startup 包后有在途数据则 RST，否则 FIN |
+| 内核 unread 族（同上原理） | RST |
+
+**应用侧报错文案分水岭**：`connection reset by peer`=有人主动断（VB 踢/
+防火墙 tcp-reset/内核 unread 路径）；`timeout`=静默黑洞（DROP/链路丢——
+`../linux/network.md`）。服务端对账：大规模踢人会留 **TcpOutRsts 尖峰**+pg_log
+`terminating` 文案，两者皆无=不是服务端踢的。
+
 ## 判读速查（现象 → 证据 → 机制指向）
 
 | 现象 | 证据 | 机制指向 |
@@ -122,14 +150,7 @@ autocommit=off` 语句仅 B 兼容模式生效；RR 隔离级别下隐式提交�
 | 建连延迟稳定几十毫秒 | 应用侧连接模式 | 每连接固定成本：线程孵化+会话初始化 |
 | 内存紧张期拒连 | CAC_OOM 文案 | 内核自保清连接；配 `memory.md` 两层闸门 |
 | 长连接业务随机断连+重试掩盖 | 会话曾处 idle in transaction + 驱动类型 | 超时参数杀会话；ODBC 默认关 compatOracleTxnControl（本节） |
-
-| 现象 | 证据 | 机制指向 |
-|---|---|---|
-| 连上又立刻断 | 服务端 WARNING 三条文案 | 准入闸表（CAC_TOOMANY/OOM/SHUTDOWN） |
-| Recv-Q 堆高 + ListenOverflows 涨 | ss -lnt + nstat | postmaster accept 消费速率（本文件） |
-| 认证慢/超时 | 日志认证失败记录 + 网络往返 | pg_hba 方式与认证超时；网络 RTT |
-| 建连延迟稳定几十毫秒 | 应用侧连接模式 | 每连接固定成本：线程孵化+会话初始化 |
-| 内存紧张期拒连 | CAC_OOM 文案 | 内核自保清连接；配 `memory.md` 两层闸门 |
+| 应用报 connection reset by peer | 服务端 TcpOutRsts + pg_log terminating | 内核 unread-close 路径发 RST（本文件断开路径节） |
 
 ## 常见错误
 
@@ -149,6 +170,10 @@ autocommit=off` 语句仅 B 兼容模式生效；RR 隔离级别下隐式提交�
 
 ## 来源
 
+- 断开路径 RST/FIN 判据（2026-11-16 核）：openGauss 6.0.0 树 SO_LINGER
+  libpq/postmaster 全层 grep 零命中；pqcomm.cpp:540（后端退出 close）、
+  :1115-1118（StreamClose）。内核 linux 基线 net/ipv4/tcp.c:3143-3189
+  （tcp_close：data_was_unread→tcp_send_active_reset）。
 - 基线 openGauss 6.0.0 源码精读（2026-10-25）：postmaster.cpp:3870
   （ServerLoop）、:4090-4128（ConnCreate/BackendStartup 调用与失败清理）、
   :5559-5612（ConnCreate：accept+盐预生成注释）、:9086-9145（BackendStartup：

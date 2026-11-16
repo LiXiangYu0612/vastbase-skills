@@ -195,8 +195,22 @@ zone 链（IN_public 等），`iptables -L INPUT -n -v` 可见含计数器；nft
 ★REJECT(默认 ICMP) 会 abort 客户端 connect（ECONNREFUSED/EHOSTUNREACH，
 **不堆 SynRetrans**）——客户端 SynRetrans 持续堆积=纯 DROP 形态（DROP 规则/
 链策略/静默队列丢），REJECT 族可排除（除非 ICMP 回程被滤）。
+
+**防火墙能不能"杀"established（2026-11-16 内核源码定论）**：Linux 侧会——
+但全是"**让两端自己死**"：DROP 型丢包→两端重传耗尽（tcp_retries2 数分钟）
+或 keepalive 判死，**防火墙自己一个包都不发**（netfilter 无任何替连接注入
+RST/FIN 的代码路径；REJECT tcp-reset 只对撞上规则的那个包当场回，不是杀连接）。
+状态丢失也未必断：conntrack established 表项 **5 天**才老化
+（nf_conntrack_proto_tcp.c:64，活跃流短窗内不会超时死）；表项真没了（清表/
+淘汰），默认 `nf_conntrack_tcp_loose=1`（:1593）时后续包**重建表项连接照跑**，
+仅 loose=0（:869 严格模式）或窗口外判 INVALID（:647,:653；窗口外 RST :1597）
+才丢。**会主动发 RST 的是硬件防火墙/IPS 的"会话复位"功能**（IPS 封禁 reset
+动作/会话老化注入 RST/FIN）——盒子厂商行为，非 Linux 语义；两端收 RST 型断联
+查那个方向。idle 连接被黑洞=keepalive 周期内两端 TCP 计数器零动静（默认 2h，
+调过则分钟级）——"断联无痕"正是 idle 黑洞的指纹。
 （联动 `../troubleshooting/connection-refused.md` REJECT 分流；本文件
-conntrack 节——表满淘汰与 reload 无关）
+conntrack 节——表满淘汰与 reload 无关；断开侧 RST/FIN 判据见
+`../internals/connection-lifecycle.md` 断开路径节）
 
 ## TCP 关闭链路与"客户端消失、连接还在"（长事务的网络侧根因，深读）
 
