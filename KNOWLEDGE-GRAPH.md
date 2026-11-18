@@ -33,9 +33,14 @@
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
   overview_table.py RULES）
-- **OS 层（linux/，7）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
+- **OS 层（linux/，10）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
   CPU↔Network 五通路/组合拳指纹——"症状层≠根因层"的路由枢纽）**、cpu、memory、
-  io-storage、network、file-descriptors、tracing-tools
+  io-storage、network、**switch-side-logs（交换机侧 VRP 日志族判读：PKT_OUTDISCARD
+  族/OAMDL/interface brief/ARP——主机 Retrans 归因"中间网络"的唯一直接证据，
+  镜像口豁免）**、**net-diag-fullchain（网络全链路定责：探测/网卡五族/DOM/抓包
+  SEQ 对账，八步 SOP+PCIe+对时）**、**net-midpath（中间层四段：L2 机制/L3 路径/
+  中间设备/虚拟化云，间歇规律性断连与"计数器全绿仍抖"的判据富矿）**、
+  file-descriptors、tracing-tools
   （内核源码基线 7.1-rc4，生产 3.10 差异见各文件版本注记）
 - **救火操作层（troubleshooting/，10）**：startup-failure、connection-refused、
   crash-panic、blocking-live、resource-exhaustion、stack-reading、
@@ -171,6 +176,21 @@ page-lsn-mismatch ↔ double-write / wal-replay（pd_lsn 判据同源）。
 - wait-events ↔ cpu：us 高含 LWLock 自旋——自旋不产生等待事件的 CPU 盲区
 - locks ↔ network：假死连接持锁（tcp_retries2 ≈15 分钟才放弃）→ 阻塞链
   持锁者先查 TCP 状态再杀
+- network ↔ switch-side-logs：丢包分层链最外一段——主机侧三道关全绿而
+  Retrans%/RTT 仍劣化时，交换机出口队列丢弃是"丢在中间网络"的直接证据；
+  replication-lag Net 段与 awr 网络闸劣化的第三站（主机→对端→中间）
+- network ↔ net-diag-fullchain：内核栈三道关=全链路 SOP 第 2 步的本体——
+  硬件/物理/交换机/抓包各段全绿时疑点回灌 network 与 os-triage（别死磕网络）
+- metrics ↔ net-diag-fullchain：Retrans%/RTT 口径边——awr 网络闸劣化数字
+  是全链路 SOP 的触发入口，SOP 产出回填"丢在哪一段"的归因
+- net-midpath ↔ network：conntrack/keepalive 旋钮本体在 network——idle 掐断
+  的保活参数与 NAT 表满判读同源（7 200s 默认比中间设备 idle timeout 长的
+  错配是高价值联判点）
+- net-midpath ↔ connection-lifecycle：两种"连接消失"按指纹区分——中间设备
+  idle 掐断（无 FIN/RST+规律时刻）vs 库侧被杀（有日志记录）；
+  connection-lifecycle 假死连接形态是 idle 掐断的库侧下游
+- net-midpath ↔ switch-side-logs：Eth-Trunk/堆叠/MAC 漂移/VRRP 的交换机
+  logbuffer 侧证边——主机侧指纹（断流 1~3s/MAC 异答）去交换机日志找时对齐
 - log-analysis ↔ memory：OOM kill ↔ 实例消失；53200（DB 限额）与 OOM kill
   （OS 耗尽）是两层闸门，分层定责
 - metrics ↔ cpu·io-storage：iowait 双刃 / %util 并行陷阱——读数口径对账边

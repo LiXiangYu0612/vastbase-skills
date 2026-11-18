@@ -433,7 +433,7 @@ B 计划劣化（★DBA 最高频场景之一）：
 | 每连接一线程（Threads 对连接数基线） | openGauss 6.0.0 基线默认形态 | `../internals/connection-lifecycle.md` |
 | 准入闸 too many clients / 认证慢 | BackendStartup 准入闸 CAC_TOOMANY/CAC_OOM | `../internals/connection-lifecycle.md` |
 | time-wait=短连接风暴 / close-wait=应用不关 / 两级连接队列溢出=ListenDrops | TCP 关闭链路 tcp.c:3191,3264；两级队列（syn backlog+accept 队列） | `../linux/network.md` |
-| conntrack 表满 early_drop 丢包 | nf_conntrack_core.c:1674 | `../linux/network.md` |
+| conntrack 表满 early_drop 丢包 | nf_conntrack_core.c:1463（early_drop；early_drop_list :1418；v7.1-rc4 复核，旧 1674 作废） | `../linux/network.md` |
 | softnet dropped=backlog 满 / time_squeeze=预算耗尽 | net-procfs.c:150 渲染；netdev_max_backlog sysctl_net_core.c:464 | `../linux/network.md` |
 | compact_stall>0=直接压缩停顿（延迟尖刺源） | /proc/vmstat compact_stall=同步压缩次数 | `../linux/memory.md` |
 | iowait 双刃（idle 才累计，忙时不计） | core.c:8089 语义 | `../linux/cpu.md` |

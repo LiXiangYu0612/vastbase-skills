@@ -80,7 +80,10 @@
 | ★四域诊断树（跨层联判入口） | ✅路由级（2026-11-03 立，st=70% 案沉淀：五列基线→A~G 支/CPU↔Network 五通路/组合拳指纹；只路由不复制，阈值全部引自四域文件） | linux/os-triage.md |
 | 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引 | linux/memory.md |
 | IO 层（page-writeback 四闸门/readahead/iostat 口径/ext4 默认） | ✅深；blk-mq 目录级、wbt/iomap 锚点 | linux/io-storage.md |
-| 网络层（收包预算/两级连接队列/syncookies/TIME_WAIT/retries2/conntrack/关闭链路/客户端消失三形态） | ✅深；keepalive 默认 7200s·9·75s 实锚、conntrack 文案实锚、reqsk 回调名实锚 | linux/network.md |
+| 网络层（收包预算/两级连接队列/syncookies/TIME_WAIT/retries2/conntrack/关闭链路/客户端消失三形态） | ✅深；keepalive 默认 7200s·9·75s 实锚、conntrack 文案实锚、reqsk 回调名实锚；**2026-11-17 全锚 v7.1-rc4 复核**（8 命中/2 更正：mib 定义=snmp.h:196-197、early_drop=:1463） | linux/network.md |
+| 交换机侧（VRP logbuffer/interface brief/ARP；PKT_OUTDISCARD 族 300/300s 判据、镜像口豁免=用户令） | ⚓锚点级（2026-11-17 S12708 实拍锚日志族与字段；机制层=通用交换架构+推断级，VRP 源码不可得；其他日志族未实拍不收） | linux/switch-side-logs.md |
+| 全链路诊断（主动探测/网卡 ethtool 五族/DOM 光模块/端口计数器/双端抓包 SEQ 对账） | ⚓锚点级（2026-11-17 立；同日 **五族已落具体驱动**：igb/ixgbe/i40e/virtio/vmxnet3 计数器表+v7.1-rc4 行级精读；GSO 伪象/PMTUD 黑洞/DNS 5s 三个源码闭环锚；DOM=框架定论+经验带推断；VRP 命令名推断级——升级材料=华为手册章节+实机 display transceiver 输出） | linux/net-diag-fullchain.md |
+| 中间层诊断（bonding/LACP 极化/STP/MAC 漂移/堆叠、VRRP/rp_filter/PMTUD 黑洞、idle 掐断/NAT/LB/DNS、迁移 stun/virtio/云限速） | ⚓锚点级（2026-11-17 立；bonding 三函数+rp_filter 已升 **v7.1-rc4 行级精读**（文件级镜像 /home/xiang/kernel-src/linux-7.1-rc4-mirror，bond_hw_addr_swap :928=切换断流机制闭环锚）；glibc resolver/VRP 侧/中间设备仍推断级或工程定论；专线/跨机房层无环境未收） | linux/net-midpath.md |
 | 动态追踪（ftrace/perf/eBPF-BCC/火焰图） | ✅入口锚点级（perf_event_open/ptrace/tracefs/探针注册定位） | linux/tracing-tools.md |
 
 ## 欠账速查（⚓→✅ 的升级线索）

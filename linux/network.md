@@ -44,7 +44,8 @@
 
 - **溢出计数**：LINUX_MIB_LISTENOVERFLOWS（tcp_input.c:7576,7627）→
   `/proc/net/netstat` TcpExt 的 **ListenOverflows / ListenDrops**
-  （include/net/tcp.h:2805）
+  （v7.1-rc4 复核：mib 名定义在 **include/uapi/linux/snmp.h:196-197**；
+  旧引 tcp.h:2805 现为调用点非定义，作废）
 - 溢出后行为由 `tcp_abort_on_overflow`（net/ipv4/tcp_minisocks.c:951）定：
   - **=0（默认）：静默丢 ACK**——客户端认为连上了，服务端没这连接 →
     客户端发数据无响应直到超时（**假死连接的经典来源**）
@@ -150,17 +151,93 @@ backlog+somaxconn（只买缓冲时间）→ tcp_abort_on_overflow=1（快失败
 FlushAllOnReload=no）/NetworkManager 接口 → `set_policy("ACCEPT")` 拆门。
 **conntrack（nf_conntrack）全程不清**——这是"老连接不死"的根。
 
+**FlushAllOnReload（官方语义，firewalld.conf(5) 原文）**："Flush all runtime
+rules on a reload. In previous releases some runtime configuration was
+retained during a reload, namely; interface to zone assignment, and direct
+rules. This was confusing to users. To get the old behavior set this to
+'no'. Defaults to 'yes'."（v0.9.3 / v1.0.0 / main 三版一致，默认 yes）
+——管的是**运行时接口归区与 direct 规则**，不碰 conntrack；2.3+ 新增
+`ReloadPolicy`（官方原文明确 "all traffic except established connections
+is dropped while reloading the firewall rules"），是 established 放行的
+又一纸面实锤。文档：firewalld.org/documentation/man-pages/firewalld.conf.html
+（源码锚 main:config/firewalld.conf#67-73、doc/xml/firewalld.conf.xml#182-208）。
+
 **两后端行为关键差异**：
 
 | 后端 | reload 窗口内 established | 机制实锤 |
 |---|---|---|
-| nftables（RHEL8+/openEuler 默认） | **全程放行** | set_policy("DROP") 建独立临时表 `firewalld_policy_drop`：filter 三链挂 input/forward/output，优先级 0+10-1=**9**（抢在主表 10 之前），链尾 policy drop + 每链 `ct state established,related accept`（nftables.py `build_set_policy_rules`/`_build_set_policy_rules_ct_rules`；`build_flush_rules` 注释明说这张表不 flush） |
+| nftables **≥0.7.0**（RHEL8 后期/openEuler 20.03 SP2+ 默认） | **全程放行** | set_policy("DROP") 建独立临时表 `firewalld_policy_drop`：filter 三链挂 input/forward/output，优先级 0+10-1=**9**（抢在主表 10 之前），链尾 policy drop + 每链 `ct state established,related accept`（nftables.py `build_set_policy_rules`/`_build_set_policy_rules_ct_rules`；`build_flush_rules` 注释明说这张表不 flush）。上游修复 commit `67aa1ce6a9`（2019-03-04 "nftables: allow existing connections during reload"） |
+| nftables **0.6.6（含 openEuler 0.6.6-x）** | **同样被临时 DROP 策略丢弃** | 0.6.6 的 `build_set_policy_rules("DROP")` 是 **raw prerouting/output 优先级 -291 policy drop，无任何 ct 例外**（nftables.py:365-376）——比 conntrack 还早，established 照丢；0.7.0 才改成 filter 钩子+ct 例外 |
 | iptables（CentOS 7 默认/显式 FirewallBackend=iptables） | **断流窗口**：filter+raw+mangle+security 全部内建链 `-P DROP`（nat 除外），**无 established 例外**；raw PREROUTING 在 conntrack 之前 ⇒ 窗口内所有包（含 established）静默丢弃，等价 mini-panic | ipXtables.py `build_set_policy_rules`（0.6.3/0.9.3/master 三版一致）：只发 `-P`，不插例外规则 |
 
 iptables 后端的断流窗 = set_policy("DROP") 起到 reload 收尾
 set_policy("ACCEPT") 止，覆盖整个 XML 重读+重放时长；窗口内老连接靠
 TCP 重传扛（retries2 机制见上节）——亚秒级无感，规则巨多/慢盘可拖到
 秒级，也只是卡顿+超时，**不是 reset**。
+
+**0.6.6 现场要点（openEuler 20.03 LTS 系 0.6.6-x，2026-11-17 源码对读）**：
+术语：本节的"reload 期间临时 DROP 策略"指源码 `Firewall.set_policy("DROP")`
+装入的临时策略（`build_set_policy_rules`）；firewalld 新版把它做成配置项
+`ReloadPolicy`（firewalld.conf(5)：`Policy during reload. By default all
+traffic except established connections is dropped while the rules are
+updated.`）；上游 issue 标题为 "Service disruption is possible during the
+reload"。不要使用非官方简称。
+- **两个后端在 0.6.6 都没有 established 例外**：nftables 走 raw 优先级 -291
+  `policy drop`（nftables.py:365-376）；iptables 走全部内建链 `-P DROP`
+  （含 raw PREROUTING，ipXtables.py `build_set_policy_rules`）。0.7.0 起只
+  修了 nftables（commit 67aa1ce6a9），**iptables 后端到 0.9.3/master 仍无
+  例外**——升 firewalld 想避开 reload 期间的临时 DROP 窗口，必须同时切
+  nftables 后端。
+- **openEuler 出厂补丁把默认后端改成 iptables**：
+  `0001-fedora-patch-to-default-to-iptables-backend.patch` 删掉
+  firewalld.conf 里的 `FirewallBackend` 整段 + `FALLBACK_FIREWALL_BACKEND=
+  "iptables"`。判别：conf 里**没有** FirewallBackend 行 = iptables 后端（不是漏配）。
+  运行时复核：`grep FALLBACK_FIREWALL_BACKEND /usr/lib/python3*/site-packages/firewall/config/__init__.py`；
+  `nft list ruleset | grep -c 'table inet firewalld'`（1=nftables 后端）；
+  `iptables -L -n | grep -E 'IN_|OUT_'`（有 firewalld 链=iptables 后端）。
+  **0.6.6 加 `FirewallBackend=nftables` 无收益**：该版本 nftables 后端同样无 ct
+  例外（见上表），必须升级到 ≥0.7.0（实用线 0.9.6+）才有 established 放行。
+- **0.6.6 无 `FlushAllOnReload`**（v0.7.0 才有，commit 242bc4e2e2）；reload()
+  固定先 save 再 restore zone interfaces 与 direct 规则（fw.py reload() 全文），
+  所以运行时接口/direct 规则不会丢——0.6.6 的丢法只有 reload 期间临时
+  DROP 策略这一种。
+- 临时 DROP 策略持续时长 = cleanup+_start 全量重建；放大因子：**xtables 锁**
+  （ipXtables.py:468-497：单条 iptables 命令优先 `-w10` 最多 10s，回退 `-w`
+  无上限；`iptables-restore` 优先 `-w` **无上限**，回退 `--wait=2` 最多 2s
+  ——锁被别人长期占用时窗口可被无限拉长）+ ipset 重建（ipset 后端批量
+  `ipset restore`，快；nftables 后端逐条 add，慢）+ 规则/ipset 条目数量。
+- 观测：`time firewall-cmd --reload`；`FIREWALLD_ARGS=--debug=2`
+  （/etc/sysconfig/firewalld）重启后 journal 出 "Flushing and applying took
+  N seconds"（fw.py:452-455，debug2 才打）。
+- **不触发 reload 的放行手段**（0.6.6 实测代码路径）：运行时
+  `firewall-cmd --ipset=X --add-entry=Y` 直接 `backend.set_add` 立即生效
+  （fw_ipset.add_entry），permanent 另写、维护窗再 reload；比"permanent+
+  立即 reload"安全（后者每次都在临时 DROP 策略下重建全量规则）。
+- reload 期间的临时 DROP 策略只丢包、不发 RST：TCP 承载的主备复制靠重传能扛，
+  **真断联**要么窗口超过库侧超时（wal_sender/receiver_timeout），要么是
+  reload 窗口外的原因（whitelist 漏对端 IP、rich rule 源 ipset 不匹配 →
+  重连被 REJECT）。
+- **上游出处（两条线，勿混）**：
+  ① **iptables 后端**：issue #369 "Service disruption is possible during the
+  reload"（2018-08-10，**无版本号、无 label**，报告 iSCSI established 被
+  reload 打断；https://github.com/firewalld/firewalld/issues/369）——报告人
+  3 天后以 "iptables-restore doesn't support atomic loading" 自行关闭，
+  **无修复**。它只证明 iptables 后端此行为"已知且不修"，**不是** nftables
+  修复的 issue 来源。
+  ② **nftables 后端**：修复 commit `67aa1ce6a9`（2019-03-04 "nftables: allow
+  existing connections during reload"），message 只写 `Fixes: rhbz 1663588`
+  （Red Hat Bugzilla，公网无权限访问）；diff 仅在 nftables.py 增
+  `_build_set_policy_rules_ct_rules`（ct established,related accept），同
+  commit 的 ipXtables.py 只把 PANIC 映射为 DROP，**未加 established 例外**。
+  是否含该 commit 的判据：GitHub compare `v0.6.6...v0.7.0`（v0.7.0 发布于
+  2019-06-11）。
+  ③ 旁证 issue #1129（2023，"Switching backend to iptables and then
+  reloading interrupts network"）。
+- **0.6.6 的版本证据在代码里、不在 issue 里**：官方 v0.6.6 tarball 的
+  nftables.py:365-382（`build_set_policy_rules`）、ipXtables.py:512-520
+  （只发 `-P`）、fw.py:939（`reload()`）；修复后基线 v0.7.0 的
+  nftables.py:371（`_build_set_policy_rules_ct_rules`）/380（`build_set_policy_rules`）；
+  openEuler 0.6.6-x 的 spec 补丁列表无该修复回移。
 
 **为什么默认不出 RST（内核源码定论，2026-11-16 补锚）**：REJECT target 的
 行为由 `reject-with` 决定（reject_tg，ipt_REJECT.c:36-64）——九个枚举值里
@@ -503,6 +580,14 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   同样不能开（NAT 有毒）、syncookies/两级队列/TIME_WAIT=60s/retries2 跨版本
   一致
 - tcp_tw_recycle 于 4.12 移除；netdev_budget_usecs 于 4.5 加入
+- **2026-11-17 全锚 v7.1-rc4 复核**（文件级镜像
+  /home/xiang/kernel-src/linux-7.1-rc4-mirror/）：dev.c:7918-7920
+  （现读 net_hotdata，行号仍命中）、sysctl_net_core.c:464/:622、
+  net-procfs.c:150/:332、tcp_input.c:7576/:7618/:7627、
+  tcp_minisocks.c:951、tcp.h:169 全部命中；**两处更正**：
+  ListenOverflows/ListenDrops mib 名定义=include/uapi/linux/snmp.h:196-197
+  （旧引 tcp.h:2805 为调用点）；conntrack early_drop=nf_conntrack_core.c:
+  1463（旧 1674，diagnostic-map 已同步更正）
 - firewalld 用户态源码（2026-11-15 三版本对读）：master + v0.9.3 的
   fw.py/nftables.py/ipXtables.py + v0.6.3 的 ipXtables.py（CentOS 7 原生）。
   iptables 后端三版同构：set_policy 仅 -P DROP 无例外、DEFAULT_RULES 第一条

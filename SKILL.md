@@ -155,6 +155,9 @@ vastbase/
 | Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层；构成逐项哪里异常（meminfo 逐键+LRU 四链+构成×水位联动） |
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
 | Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清） |
+| 交换机侧日志与端口判读（VRP/S 系列） | `linux/switch-side-logs.md` | 拿到交换机 logbuffer/interface brief/ARP；PKT_OUTDISCARD 族+OAMDL 丢包告警判读；主机 Retrans 归因"中间网络"；镜像口豁免 |
+| ★网络全链路诊断（网卡/光模块/交换机/抓包） | `linux/net-diag-fullchain.md` | Retrans/RTT 劣化逐段定责：ping/mtr/iperf3 定性→ethtool -S 五族→DOM 光功率对端互读→交换机端口→双端抓包 SEQ 对账；换件验证底数对账；PCIe/AER；双端对时前置 |
+| ★中间层网络诊断（二层/三层/中间设备/虚拟化） | `linux/net-midpath.md` | 间歇/规律性断连且主机计数器全绿：bonding 切换断流/LACP 落单/hash 极化、STP/MAC 漂移/堆叠、VRRP/回程不对称/PMTUD 黑洞、防火墙 idle 掐断/NAT 源端口耗尽/LB/DNS 首连延迟、迁移 stun/virtio/云限速——症状指纹速查表 |
 | Linux 文件描述符层（fdtable/rlimit/proc 渲染） | `linux/file-descriptors.md` | fd 分类树判读：pgsql_tmp 活跃落盘、version.cfg 泄漏、fd 逼近 rlimit |
 | Linux 动态追踪工具链（ftrace/perf/eBPF/strace 取舍） | `linux/tracing-tools.md` | 要定位到函数/路径级：on/off-CPU、IO 延迟、syscall，含生产开销取舍 |
 | 锁等待/阻塞现场 | `troubleshooting/blocking-live.md` | 业务挂起、会话堆积、疑似死锁、假死持锁：保现场→分诊→止损 |
