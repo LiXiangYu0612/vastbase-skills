@@ -33,9 +33,12 @@
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
   overview_table.py RULES）
-- **OS 层（linux/，10）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
+- **OS 层（linux/，11）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
   CPU↔Network 五通路/组合拳指纹——"症状层≠根因层"的路由枢纽）**、cpu、memory、
-  io-storage、network、**switch-side-logs（交换机侧 VRP 日志族判读：PKT_OUTDISCARD
+  io-storage、**cgroup（五控制器源码层：cpu.max 配额咬/throttled_usec 本组vs子孙/
+  memory.high 罚睡 vs max OOM/pids fork EAGAIN/io.max×wbt 两层——"库慢 OS 不慢"
+  与容器/K8S 限额判读的根）**、network、
+  **switch-side-logs（交换机侧 VRP 日志族判读：PKT_OUTDISCARD
   族/OAMDL/interface brief/ARP——主机 Retrans 归因"中间网络"的唯一直接证据，
   镜像口豁免）**、**net-diag-fullchain（网络全链路定责：探测/网卡五族/DOM/抓包
   SEQ 对账，八步 SOP+PCIe+对时）**、**net-midpath（中间层四段：L2 机制/L3 路径/

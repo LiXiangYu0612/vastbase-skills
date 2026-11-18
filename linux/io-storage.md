@@ -193,12 +193,52 @@ mm/page-writeback.c（深读）：
   "this call might block if too much dirty data exists in the range"）；
   SYNC_FILE_RANGE_WRITE 的"异步"只免等完成，bio 提交仍可睡在 wbt
 
-## 块层：multiqueue 与调度器
+## 块层：multiqueue 与调度器（7.1-rc4 行级精读，2026-11-19）
 
-- 现代 IO 走 blk-mq（软件队列/CPU → 硬件队列），合并（merge）与调度器
-  （block/：**none / mq-deadline / kyber / bfq**）在请求进入硬件队列前
-- 判读：`cat /sys/block/<dev>/queue/scheduler`；数据库常用 **none 或
-  mq-deadline**（降低调度延迟）；bfq 面向交互公平，吞吐型 DB 不合适
+**两级队列结构**：每 CPU 一个软件队列（`blk_mq_ctx`）→ 若干硬件队列
+（`blk_mq_hw_ctx`，数量=min(设备 hw 队列, nr_hw_queues)；NVMe 多队列常见
+读/写/POLL 分型 hctx）。请求进队时**按当前 CPU 的 ctx 定 hctx**：
+`__blk_mq_alloc_requests`（blk-mq.c:537）里 `blk_mq_get_ctx(q)` +
+`blk_mq_map_queue(cmd_flags, ctx)`（:551-553）——**请求类型（读/写/轮询）
+决定走哪个 hctx**，不是简单 CPU 哈希。
+
+**提交→tag→派发主干（判读 await 的排队段在哪儿产生）**：
+
+| 步骤 | 锚点 | 机制/判读 |
+|---|---|---|
+| bio 进块层 | blk_mq_submit_bio（blk-mq.c:3141）→ blk_mq_get_new_requests（:3046） | plug（批量合并）在这里起作用 |
+| 请求+tag 分配 | __blk_mq_alloc_requests（:537） | plug 场景 nr_tags>1 走**批量 tag**（__blk_mq_alloc_requests_batch :464，一次拿一批） |
+| tag 池 | blk_mq_get_tag（blk-mq-tag.c:137）→ 快路径 __blk_mq_get_tag（:109，sbitmap） | **tag 耗尽**：NOWAIT 直接失败；普通路径先 kick 在途 IO 再睡等 sbitmap（完成端唤醒）——queue 深度打满的 await 涨主要涨在这段 |
+| 分配失败重试 | blk-mq.c:576-587 | tag=NO_TAG 且非 NOWAIT → **msleep(3) 后重选 hctx 重试**（CPU 热插拔迁移场景）；hctx 已不在线则换队 |
+| 派发 | blk_mq_run_hw_queue（:2352） | **本 CPU 不在 hctx->cpumask → 异步延迟派发**（:2376-2378）；本 CPU 才同步跑 |
+| 调度器派发 | __blk_mq_sched_dispatch_requests（blk-mq-sched.c:268） | 先清 hctx->dispatch 残留（公平），再向调度器要请求；★"低 queue_depth 时只派一部分、剩余留在调度器里继续可合并排序"（:282-291 注释）——**浅队列设备的合并收益设计** |
+| 交驱动 | blk_mq_dispatch_rq_list（blk-mq.c:2116） | 逐个交驱动；budget/流控（rq_qos done 回调在完成路径） |
+
+**调度器**（block/：none / mq-deadline / kyber / bfq）：
+- ★调度器选择是**设备队列拓扑决定的，不是"DB 调优项"**（源码定论，
+  elevator_set_default，elevator.c:729）：**多 hw 队列（NVMe 类）默认 none**——
+  `BLK_MQ_F_NO_SCHED_BY_DEFAULT` 直接跳过（:740，blk-mq.h:709），或因多队列
+  不落单队列分支（:744-747 注释原话：单队列设备才默认 mq-deadline，多队列
+  或不可用则 none）。**给 NVMe 上 mq-deadline/bfq 是 HDD 时代残留的负优化**
+  （把并行提交强行过一道排序软件层）；mq-deadline 只对单 hw 队列设备
+  （SATA/SCSI 路径、部分云盘 virtio）有防饥饿意义。★`elevator=` 内核启动参数
+  已死（elevator.c:888-895 只打印 warning 不生效）——只能 sysfs 按设备设；
+  bfq 面向交互公平，吞吐型 DB 不合适；
+- ★**在线切换 = 冻结窗口**：elevator_switch（elevator.c:562）先
+  `blk_mq_quiesce_queue(q)`（elevator.c:576）冻结整队列再换调度器实例——**生产在线
+  echo 切 scheduler 会造成短暂全队列停顿**，放维护窗口做；切到 none 时
+  `nr_requests = queue_depth`（:591，无调度器时队列深度即 tag 深度）。
+- queue_depth 语义：每 hctx 的 **tag 数**（driver_tags），不是"待处理 IO 上限"
+  的全部——nr_requests 只在有调度器时另有账。
+
+**CPU 离线/cpuset 收缩不断 IO**：blk_mq_hctx_notify_dead（blk-mq.c:3844）——
+死核的 ctx 残留请求**搬进 hctx->dispatch 立即重派**（:3865-3870），丢核不丢
+请求；在线核继续服务。判读：缩容/热插拔瞬间 IO 抖一下是重映射，不是盘病。
+
+**wbt/cgroup 与本层的次序**：throtl 在 submit_bio_noacct（blk-core.c:882）
+先卡、rq_qos（wbt/iocost）在 blk_mq_submit_bio 内 :3063/:3110——详见
+cgroup.md「io 控制器」节（两层叠加判读）。
+
 - io_uring（io_uring/ 目录，5.1+）目前 VastBase 未用，仅备版本注记
 
 ## iostat 口径（/proc/diskstats，block/genhd.c 渲染）
@@ -217,11 +257,76 @@ mm/page-writeback.c（深读）：
   真实能力；默认参数（buffered, bs=4k, iodepth=1）测出来的是页缓存+单队列，
   没有意义
 
-## 判读速查（现象 → 命令 → 机制）
+## 现代 SSD/NVMe 判读域（HDD 经验失效清单，2026-11-19 立）
+
+> HDD 时代的判读直觉在闪存上大面积失效。本节按"域"列失效点与替代判读；
+> 源码锚点 = NVMe 驱动与块层（7.1-rc4）。**rot 标志本身不可信**（见域 I），
+> 判介质先看型号/传输（nvme list / lsblk -d -o RO,TRAN），别拿 rotational 分档。
+
+**域 A｜调度器与排序——已死**：见块层节（多队列默认 none，elevator.c:744-747）。
+排序（寻道优化）在闪存无意义；合并（plug merge）仍活——减少的是请求开销不是寻道。
+
+**域 B｜延迟量级与形态**：
+- 量级：NVMe 单次 4K 随机读 **50-200µs**、写 20-100µs（SLC cache 内）；SATA SSD
+  ~100-500µs；HDD 寻道+旋转 5-15ms。**await 判读三档：NVMe>1ms / SATA SSD>5ms /
+  HDD>20ms**（判读速查表已改三档）。
+- 形态：**均值正常 + 尾部爆炸是闪存的病征**——SLC 写缓存写满（write cliff）、
+  GC、FTL 映射表冷启动都会打 p99/p999 尖刺而 await 均值不动。iostat 均值判不出，
+  用 `iostat -x 1` 连续采样看 await 尖刺列 + 应用侧 p99 互证（无 eBPF 时）。
+- 消费级盘无 PLP 时 fsync 延迟可到几十 ms 且随脏量波动（域 E）。
+
+**域 E｜写缓存与掉电保护（fsync 延迟的分水岭）**：
+- NVMe 的 volatile write cache 由**控制器 VWC 位申报**（core.c:2428-2431：
+  `vwc & NVME_CTRL_VWC_PRESENT` → 挂 BLK_FEAT_WRITE_CACHE|FUA），sysfs 的
+  wcache 列即此位；企业盘带 PLP（电容）= 写缓存安全且 fsync 快；消费盘
+  FTL 全刷 = fsync 抖动大。
+- 判读：`cat /sys/block/nvme*/queue/write_cache`（write back / write through）；
+  DB 丢数据风险线在**无 PLP + write back** 组合——fsync 语义靠 FUA/flush 走
+  完整链路，延迟形态见域 B。
+- SATA `hdparm -W0/1` 同域；virtio 云盘的 wcache 由宿主实现，客户机不可见。
+
+**域 F｜TRIM/Deallocate 与衰减**：不做 TRIM → 盘内有效页比例高 → GC 搬运量
+大 → 写放大（WAF）升 → 吞吐/延迟衰减。ext4/xfs 默认 discard=async 或
+periodic fstrim；判读衰减看 smart-log 的 data_units_written 对比应用写入量
+（WAF≈倍数）。NVMe 1.0d 之后的 DEAC/通杀指令细节不展开，判读不依赖。
+
+**域 G｜寿命与健康（nvme smart-log，判读主数据源）**：
+`nvme smart-log /dev/nvmeX`（结构 = include/linux/nvme.h:742
+`struct nvme_smart_log`，512B，core.c:5394 有 BUILD_BUG_ON 校验）：
+
+| 字段（nvme.h 行号） | 判读 |
+|---|---|
+| critical_warning(:743) ≠0 | 立刻处理：任一置位都是硬件级告警（备件/温度/介质/易失备份失效） |
+| temperature(:744) | 复合温度 Kelvin（-273 得 °C）；逼近 critical 温度 = 降速前兆（域 H） |
+| avail_spare(:745) < spare_thresh(:746) | 备用块低于阈值 = 寿命尽头的硬信号 |
+| percent_used(:747) | 生命用量估 >100% 不是立刻死，但与 media_errors 同看要警惕 |
+| media_errors(:759) ≠0 且涨 | 介质错误在积累——换盘信号（个别坏块可被重映射掩盖，涨势才关键） |
+| data_units_written(:751) ×512KB | 判 WAF 与寿命消耗速率的分母 |
+
+**域 H｜温度降速（throttle）**：NVMe 过热自动降速是生产真实问题（高队列深度
+持续写 + 机箱风道差）。判读链：smart-log temperature 逼近阈值 → await 整体抬升
+（非尖刺是台阶）→ `cat /sys/class/nvme/nvme*/hwmon*/temp*_critical` 看阈值。
+形态区分：GC=写时尖刺，温度=读写同时台阶式抬升。
+
+**域 I｜rotational 标志不可信（源码坐实）**：NVMe 的 rot 位是**盘固件自己在
+identify namespace NSFEAT bit5 申报的**（`info->is_rotational = id->nsfeat &
+NVME_NS_ROTATIONAL`，core.c:1681；:2433-2434 据此挂 BLK_FEAT_ROTATIONAL）——
+虚拟盘/云盘固件乱报则 /sys 的 rotational=1（SSD 被标成 HDD），任何"按 rot
+自动选分档/调度策略"的工具在虚拟环境必错。判介质：`nvme list` 型号 /
+`lsblk -d -o NAME,ROTA,TRAN,MODEL`，TRAN=nvme/sata 直接定域。
+
+**域 J｜队列深度量级**：NVMe 每核一对 SQ/CQ（中断向量亲和），queue_depth
+默认 1024 级；IOPS 量级 NVMe 10^5~10^6/s vs HDD 10^2/s——绝对 IOPS 判读先对
+量级（IOPS 300/s 对 NVMe 是闲置、对 HDD 是打满，别用同一把尺）。
+
+**企业存储注记（无环境，仅存目）**：NVMe-oF/multipath/RAID 卡 BBU 属另一层
+（fabric/控制器冗余），判读走存储厂商工具，本域不展开。
+
+
 
 | 现象 | 命令 | 机制指向 |
 |---|---|---|
-| await 高（分介质：SSD>5 / HDD>20） | `iostat -x 1`；`cat /sys/block/*/queue/nr_requests` | 真设备瓶颈；对照 fio 基线，盘速/调度器 |
+| await 高（三档介质：NVMe>1 / SATA·SAS SSD>5 / HDD>20 ms） | `iostat -x 1`；`cat /sys/block/*/queue/nr_requests` | 真设备瓶颈；对照 fio 基线，盘速/调度器；**NVMe 正常延迟 50-200µs，await 破 1ms 就要查**（见下节 SSD/NVMe 域） |
 | await 周期尖峰对齐库 checkpoint | AWR Pagewriter/Checkpoint 段 + iostat 时间轴 | 双层刷脏互踩（写路径闸门表） |
 | 物理读高且慢 | iostat r_await + read_ahead_kb | 预读不足或随机化（`parameters.md` 组 2） |
 | 写延迟高但盘闲 | vmstat w/b 列 + BdiWriteback | 可能卡在 OS 限流或 fsync 语义而非盘（`commit-sync-events.md`） |
@@ -232,6 +337,10 @@ mm/page-writeback.c（深读）：
 | 错误 | 为什么错 | 纠正 |
 |---|---|---|
 | 拿 %util 判饱和/慢盘 | **util 永不作判读标准（2026-10-28 用户令：这参数没啥价值）**；multiqueue 并行下 io_ticks 不分并行度 | 只看 await（介质分档）+ 绝对 IOPS；avgqu-sz 辅助 |
+| **给 NVMe 上 mq-deadline/bfq 调优** | HDD 时代残留：多队列设备默认 none（elevator.c:740/:744-747），软件排序层在闪存上是纯开销 | NVMe 保持 none；只有单队列设备才考虑 mq-deadline |
+| **拿 await 均值判闪存健康** | SLC cliff/GC 打的是 p99 尖刺，均值不动（域 B/F） | 连续采样看尖刺列 + smart-log data_units_written 对 WAF |
+| **信 /sys 的 rotational 判介质** | rot 位由盘固件申报（core.c:1681），虚拟盘/云盘错标常见（域 I） | `nvme list`/`lsblk -o TRAN,MODEL` 定介质 |
+| **消费级 SSD 上期望稳定 fsync** | 无 PLP，FTL 全刷随脏量抖到几十 ms（域 E） | 企业盘（PLP）或接受抖动设计；wcache 位只反映 VWC 申报 |
 | 看 svctm 定位设备慢 | 内核早已不提供真实服务时间 | 忽略该列 |
 | fio 默认参数测库盘 | buffered+iodepth=1 测的是页缓存 | direct=1+明确 bs/iodepth |
 | vm.dirty_* 全默认不核 | OS 回写与库刷脏双层互踩（page-writeback.c 阈值表） | 收敛 OS 侧（组 3） |
@@ -241,7 +350,9 @@ mm/page-writeback.c（深读）：
 
 ## 版本注记
 
-- 基线 7.1-rc4 精读；生产 **env-A = 3.10.0-1160**（CentOS 7）：**旧请求层+
+- 基线 7.1-rc4 精读（2026-11-19 增补：blk-mq 行级 + 现代 SSD/NVMe 判读域，
+  NVMe 驱动源码 core.c/pci.c/nvme.h + include/linux/nvme.h 锚点）；生产
+  **env-A = 3.10.0-1160**（CentOS 7）：**旧请求层+
   CFQ 默认**（blk-mq 3.13+，CentOS 仅 scsi_mq 可选）、**无 wbt**（4.10+）、
   无 io_uring；page-writeback 阈值/周期/过期四闸门跨版本成立
 - 现场机档 = Kylin 4.19.90-24.4.v2101（openEuler 4.19 系，2026-11-02）：
@@ -257,6 +368,11 @@ mm/page-writeback.c（深读）：
   fs/fs-writeback.c:2380,2428、mm/backing-dev.c:126、mm/readahead.c:144,546、
   block/blk-sysfs.c:181、block/genhd.c（diskstats）、fs/iomap/direct-io.c:661、
   fs/ext4/super.c:1726,1909、block/blk-wbt.c、block/ 调度器清单
+- **2026-11-19 行级增补**（文件级镜像 `/home/xiang/kernel-src/linux-7.1-rc4-mirror`）：
+  block/blk-mq.c:537,576,2352,3844 + blk-mq-tag.c:109,137 + blk-mq-sched.c:268 +
+  elevator.c:562,576,729,740,744-747,888-895；NVMe 侧
+  drivers/nvme/host/core.c:1681,2428-2434,5394、
+  include/linux/nvme.h:742-759（smart_log 结构）、include/linux/blk-mq.h:709
 - 生产内核版本实测：env-A uname -r（2026-10-25）
 - Linux v4.19 kernel/hung_task.c、block/blk-wbt.c、block/blk-rq-qos.h 全文
   对读（2026-11-02，git.kernel.org raw 取源）；OG 6.0 基线
