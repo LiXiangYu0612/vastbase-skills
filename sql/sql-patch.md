@@ -35,7 +35,17 @@ catalog `gs_sql_patch` 与 `dbe_sql_util` schema 全量开放，六函数：
 | `create_abort_sql_patch` | (name, bigint, text 描述, boolean enable) | 建拦截补丁（备库只读拒建） |
 | `enable_sql_patch` / `disable_sql_patch` | (name) | 启停（灰度开关，改错可秒回） |
 | `drop_sql_patch` | (name) | 删 |
-| `show_sql_patch` | () → setof(patch_name, unique_sql_id, enable, abort, hint_str) | 清单 |
+| `show_sql_patch` | (patch_name) → (unique_sql_id, enable, abort, hint_str)；**缺名直接报错 "No such SQL patch"，不能当清单用** | 查单个补丁 |
+
+★实测修正（2026-11-15 晚，204 tpcc_ts 全生命周期）：
+- **hint 必须是裸文本**（`set(query_dop 1)`、`indexscan(t1)`），传 `/*+ set(...) */` 带皮形式 → `ProcessHintString` 剥不出任何 hint → **静默返回 false，无日志无 WARNING**（sqlpatch.cpp:96-102 + RemovePatchUnsupportHint 后 nall_hints==0）——"建了没反应"先查皮。
+- **gs_sql_patch 是每库一份**（catalog 也随库），操作必须连对库；`dbe_perf.statement` 同样每库。
+- 同 unique_sql_id 只能有一个补丁：重复建报 `Cannot accept sql patches with duplicate unique sql id`。
+- SQL Patch 支持的 hint 族（源码 RemovePatchUnsupportHint）：join/leading/row/scan/predpush(+same_level)/set/cache_plan；**剔除** blockname/no_expand/no_gpc/rewrite。
+- **outline hint → sqlpatch（2026-11-16 实测）**：`EXPLAIN (OUTLINE) <语句>` 输出 BEGIN/END_OUTLINE_DATA 之间的行拼一行即 hint；`INDEX(@"SEL$1" ...)` 的双引号是 Oracle 查询块语法**合法**（"双引号不行"仅限 SET() 的值）；Oracle 标记（DB_VERSION 等）引擎自剔。**手动 cp 路径**：整份 explain 输出存文件 → `vb_tool sqlpatch create -h @文件`，标记行间内容自动提取，不经 shell 无转义问题。注意 EXPLAIN 过的语句不进 tracking，取 unique_sql_id 须真执行一次。
+- **引号三层规矩（2026-11-15 实测）**：set() 值带特殊字符必须**单引号** `'magicset,predpushnormal'`；双引号 `"` 语法不收（hint_gram.y 的 guc_value 只认 IDENT/SCONST/on/off/true/false）；手写 SQL 调函数时才写 `''` 双写（SQL 字面量转义），**预双写再传给工具/参数化接口必失败**（双重转义，值里真出现两个引号→词法炸→静默 false）。工具层（vb_tool sqlpatch -h）永远给真实形态单引号。
+- 3.0.9（204 vb309@6432）比 2.2.x 多三个函数：`import_sql_outline(text,text,name,name,bool×3)`、`import_sql_bind(name,bigint,bigint[,text],bool)`、`drop_sql_bind(name)`——outline 导入是 3.0.9 扩展，openGauss 6.0.0 基线树无此实现（2026-11-15 用户拍板暂不做）。
+- catalog 实列：patch_name, unique_sql_id, owner, enable, status, abort, hint_string, hint_node, original_query, original_query_tree, patched_query, patched_query_tree, description——清单直接查 `gs_sql_patch`，别用 show_sql_patch。
 
 命名口径：开源基线内部函数名 `create_sql_patch_by_id_hint`（sqlpatch.cpp:60），
 VastBase 暴露名是 `create_hint_sql_patch`——查源码时按内部名，调用按暴露名。
