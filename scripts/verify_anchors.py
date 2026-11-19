@@ -107,6 +107,11 @@ CLAIMS = [
     ("lk", "include/linux/nvme.h", "struct nvme_smart_log {", 742, "io-storage.md"),
     ("lk", "include/linux/nvme.h", "__u8\t\t\tpercent_used;", 747, "io-storage.md"),
     ("lk", "include/linux/nvme.h", "__u8\t\t\tdata_units_written[16];", 751, "io-storage.md"),
+    # 2026-11-19 reset 风暴案判读锚（network.md EstabResets 四律）
+    ("lk", "net/ipv4/tcp.c", "TCP_INC_STATS(sock_net(sk), TCP_MIB_ESTABRESETS);", 3016, "network.md"),
+    ("lk", "net/ipv4/tcp.c", "TCP_INC_STATS(sock_net(sk), TCP_MIB_ATTEMPTFAILS);", 5096, "network.md"),
+    ("lk", "net/ipv4/tcp_input.c", "void tcp_reset(struct sock *sk, struct sk_buff *skb)", 4852, "network.md"),
+    ("lk", "net/ipv4/tcp_input.c", "void tcp_done_with_error(struct sock *sk, int err)", 4838, "network.md"),
 ]
 
 

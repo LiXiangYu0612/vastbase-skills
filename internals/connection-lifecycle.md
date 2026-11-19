@@ -142,31 +142,92 @@ postmaster 拒连 StreamClose→comm_closesocket（:1115-1118）。
 
 ### ★SSL 连接上的 "reset by peer" 是冤案（2026-11-19 源码定论，reset 风暴案判读前提）
 
-`be-secure.cpp` 的 read/write 四个函数（old/light_secure_read/write，
-light_comm 开关只是选 old 还是 light，be-secure.cpp:458 分发）**共 8 处硬编码
-`errno = ECONNRESET`**（:306/:316/:381/:391/:526/:534/:617/:625）——SSL 分支里：
+**结论**：SSL 连接上的 `could not receive data from client: Connection
+reset by peer` **不能当"收到 TCP RST"的证据**——对端最正常的关闭（TCP FIN /
+TLS close_notify / 应用正常退出）也会打成这句。
 
-- `SSL_ERROR_SYSCALL` 且 n!=-1（**含 n==0：对端 TCP 直接 FIN 关闭、未发 TLS
-  close_notify**）→ `errno=ECONNRESET`（:306 等）
-- `SSL_ERROR_ZERO_RETURN`（对端发了 close_notify——**SSL 层的优雅关闭**）
-  → `errno=ECONNRESET`（:316 等）
-- `SSL_ERROR_SSL`（协议违例）fall-through 同设
+**依据代码**（openGauss 6.0.0 树，src/common/backend/libpq/be-secure.cpp；
+read/write 四函数同构共 8 处：:306/:316/:381/:391/:526/:534/:617/:625，
+light_comm 开关只是选 old 还是 light 版，:458 分发；现场 light_comm=off
+即 old 路径）——SSL 分支原文：
 
-errno 随后被 `pqcomm.cpp:1255 → gs_comm_strerror()（libcomm.cpp:2309）
-→ mc_strerror(errno)（libcomm_err.cpp:32）→ strerror` 印成
-**"Connection reset by peer"**。非 SSL 分支（comm_recv=recv() 纯透传）无此
-问题——ECONNRESET 必来自内核真 RST。
+```c
+case SSL_ERROR_SYSCALL:
+    /* leave it to caller to ereport the value of errno */
+    if (n != -1) {            // n==0：对端 TCP 直接 FIN 关闭、未发 TLS close_notify
+        errno = ECONNRESET;   // ★ 内核没报任何错——errno 是这里人为赋的
+        n = -1;
+    }
+    break;
+case SSL_ERROR_SSL:
+    ereport(COMMERROR, (... errmsg("SSL error: %s, ...", SSLerrmessage(), ...)));
+    /* fall through */
+case SSL_ERROR_ZERO_RETURN:   // 对端发了 TLS close_notify —— SSL 层的"优雅告别"
+    errno = ECONNRESET;       // ★ 优雅关闭也被钉成 reset
+    n = -1;
+    break;
+```
+
+**为什么能推出这个结论（四步链条）**：
+
+1. **日志文本只是 errno 的转译**：pqcomm.cpp:1255 报错用 `%s +
+   gs_comm_strerror()` → libcomm.cpp:2309 取 `mc_strerror(errno)` →
+   libcomm_err.cpp:32（errno<1000 走系统 `strerror`）。所以
+   "Connection reset by peer" 只证明**errno 的值是 ECONNRESET**，
+   不证明内核收到过 RST。
+2. **errno 的两种来源**：非 SSL 分支 `comm_recv()`=recv() 内核透传——
+   ECONNRESET 只能来自内核真 RST（tcp_reset 设置）；SSL 分支则是上面
+   8 处**人为赋值**——OpenSSL 的三种"对端断开"状态全被映射到 ECONNRESET。
+3. **OpenSSL 状态的本义**：`SSL_ERROR_ZERO_RETURN`=收到 close_notify
+   （对端主动的 TLS 正常关闭）；`SSL_ERROR_SYSCALL` 且返回 0=TCP 层 EOF
+   （对端 FIN/进程退出，没按 TLS 规程说再见）——**两种都是"对端正常走了"，
+   语义上与 RST 无关**。
+4. **TCP 层后果**：这些关闭在 TCP 层是正常四次挥手 ⇒ 不触发
+   `tcp_set_state` 的 ESTABLISHED→CLOSE 直跳 ⇒ **服务端 EstabResets 不涨、
+   对端 OutRsts 不涨**（计数条件见 `../linux/network.md` SNMP 判读铁则）。
 
 **判读铁则**：
-1. **SSL 连接的 "reset by peer" 日志不能当"收到 RST"的证据**——对端正常
-   FIN/close_notify/PQfinish/进程退出都会打成这句。此形态 TCP 层走正常四次
-   挥手 ⇒ **服务端 EstabResets 不涨、对端 OutRsts 不涨**——"日志海量 reset
-   by peer + 两侧 RST 计数器都平"三方组合 = SSL 优雅关闭风暴的特征指纹，
-   指向**客户端批量主动断开**（连接池 evict/心跳判死/发布），不是网络事故。
-2. 判 RST 真伪三查：`show ssl` / pg_hba `hostssl` 行 / 应用连接串 sslmode；
-   再与同窗 EstabResets 对账（真 RST 必跳）。
+1. "日志海量 reset by peer + 两侧 RST 计数器都平"三方组合 = **SSL 优雅
+   关闭风暴**的特征指纹——指向客户端批量主动断开（连接池 evict/心跳判死/
+   发布），不是网络事故，RST/中间设备线全部出罪。
+2. 判 RST 真伪三查：`show ssl` / pg_hba `hostssl` 行 / 应用连接串
+   sslmode；再与同窗 EstabResets 对账（非 SSL 连接的真 RST 必跳计数）。
 3. 主备流复制同理：若复制连接走 SSL，备机 walreceiver 退出（CM 杀/正常
    退出）在主库 walsender 侧也打 reset by peer——同样不需要真 RST。
+4. 写路径对称（old/light_secure_write 同 8 处里的 4 处）：
+   `could not send data to client: ... reset by peer` 同罪。
+
+（写法动机推断级：SSL_ERROR_* 不是 errno，此处复用上层按 errno 的统一
+报错/断连清理路径，把状态硬钉成 ECONNRESET 强制走 teardown——代价是
+文案失真。）
+
+### ★报错全路径匹配表（old_secure_read 每个分支→日志原文，2026-11-19）
+
+pqcomm 两处报错点（:1255 阻塞读 / :1337 非阻塞读）文本**完全相同**：
+`could not receive data from client: %s`，%s=gs_comm_strerror()。逐分支：
+
+| SSL_read 结果 | errno 来源 | 伴生 "SSL error:" 行 | 最终日志文本 | 对端真实行为 |
+|---|---|---|---|---|
+| NONE（n>0） | — | — | 无日志 | 正常收数据 |
+| WANT_READ/WRITE+非阻塞 | 代码设 EWOULDBLOCK | — | 无（pqcomm:1330 EAGAIN 分支静默） | 无事 |
+| SYSCALL，**n==-1** | **内核真 errno**（SSL 内部 recv 失败） | **无** | "…Connection reset by peer"（仅当内核真收 RST） | **SSL 连接上的真 RST** |
+| SYSCALL，**n==0** | **硬编码 ECONNRESET** | **无** | "…Connection reset by peer" | **对端 TCP FIN/进程退出（无 close_notify），零 RST** ★ |
+| SSL_ERROR_SSL | 硬编码 ECONNRESET | **有**（先打 `SSL error: %s, remote nodename %s`） | SSL error 行 **+** "…Connection reset by peer" | TLS 协议违例 |
+| ZERO_RETURN | 硬编码 ECONNRESET | **无** | "…Connection reset by peer" | **对端发 close_notify（TLS 优雅关闭），零 RST** ★ |
+
+非 SSL 分支（comm_recv=recv 透传）：文本同款，errno 只能来自内核——
+"Connection reset by peer" ⇒ 真 RST。
+
+**判读推论（现场实测：日志里没有任何 "SSL:" 字样）**：
+1. 排除 **SSL_ERROR_SSL** 路径（它必带伴生 SSL error 行）；
+2. **不能排除 SSL 假说**——两条优雅关闭路径（SYSCALL n==0 / ZERO_RETURN）
+   本来就**只打 reset by peer、不带任何 SSL 字样**，与日志观察完全吻合；
+3. 同一文本三种来源（SSL 真 RST / SSL 优雅关闭 / 非 SSL 真 RST）**无法靠
+   文本区分**——判据只有 `show ssl`+同窗 EstabResets 对账（优雅关闭不涨、
+   真 RST 必涨）。
+4. **OG 的 "connection authorized" 行不带 SSL 标记**（postinit.cpp:341/:343
+   只有 user/database——与 PG 上游不同），所以**无法从既有日志回查某连接
+   是否 SSL**，只能查配置（ssl/hostssl/连接串）或对新连接抓包看 ClientHello。
 
 ## 判读速查（现象 → 证据 → 机制指向）
 

@@ -441,6 +441,25 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
 | OutSegs | 发出段数（含 SYN/FIN/SYN-ACK） | tcp_output.c:1698（正常发段）+ :4051（SYN-ACK，tcp_make_synack） |
 | RetransSegs | 重传段数（**数据重传 + SYN-ACK 重传**） | tcp_output.c:3644（__tcp_retransmit_skb）+ :4644（tcp_rtx_synack） |
 | InErrs | 收到坏段（校验和/头错） | tcp_input.c:6422/6567/6666、tcp_ipv4.c:1894/1928 |
+| **EstabResets** | ESTABLISHED/CLOSE_WAIT 连接**直跳 CLOSE** 次数（收 RST+主动 abort 合计口径） | tcp.c:3016（tcp_set_state：**仅旧态=ESTABLISHED/CLOSE_WAIT→TCP_CLOSE 的直接迁移才 +1**；正常四次挥手走 ESTABLISHED→FIN_WAIT_1→…→CLOSE 不经直跳、**不计数**） |
+| **AttemptFails** | SYN_SENT/SYN_RECV 态连接中止 | tcp.c:5096（tcp_done：**仅 SYN 态**迁移 CLOSE 才计；RST 在握手中期到达走这里而非 EstabResets） |
+
+**★reset 风暴案判读铁则（2026-11-19 源码钉死，EstabResets 对账四律）**：
+
+1. **计数先于日志、无时延**：RST 到达 → tcp_reset（tcp_input.c:4852）→
+   tcp_done_with_error（:4838：sk_err→tcp_done→sk_error_report 唤醒应用）
+   ——计数与"唤醒线程打日志"是**同一次 softirq 的一体两面**，计数器在
+   日志出现前就已加完。"TCP 指标延后"不存在。
+2. **非 SSL 连接**：一条 "reset by peer" 日志（ECONNRESET 出自 recv()）
+   ⇒ 该节点 EstabResets 必 +1。单节点"日志几十条 vs EstabResets+4"
+   在机制上不可能——矛盾只能落在口径（日志跨节点 grep 汇总 / DB 在
+   netns 容器采集器读宿主机另一套计数 / 采集行映射错 / 采集器时钟偏差）。
+3. **SSL 连接除外**：日志文本可被 be-secure.cpp 8 处硬编码 ECONNRESET
+   伪造（对端优雅 FIN/close_notify 也打 reset by peer），此形态 TCP 层
+   正常挥手 ⇒ EstabResets 不涨——"日志海量+计数平"反而是 SSL 优雅关闭
+   风暴的指纹（全链见 internals/connection-lifecycle.md SSL 冤案节）。
+4. **判 RST 真伪动作**：`show ssl`/hostssl/sslmode 三查定路径 → 同窗
+   EstabResets 对账；辅助 AttemptFails（握手期 RST 的账）与对端 OutRsts。
 
 - **Retrans% = RetransSegs/OutSegs**：分子含 SYN-ACK 重传——**全队列堆积时
   （"SYN-ACK 重传空转"节）Retrans% 会被动抬升，不全是网络丢包**；
