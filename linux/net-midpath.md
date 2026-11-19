@@ -129,6 +129,26 @@
 - 安全设备 RST 注入（IPS 拦截）：指纹=连接被 RST 且 RST 的 TTL/IP 特征
   与正常对端不符，抓包可证（`net-diag-fullchain.md` ⑦）
 
+### 中间设备杀连接四形态（2026-11-19 实战问出来的原理定论）
+
+杀 TCP 连接≠必发 RST——**"不发 RST"反而是多数设备的默认杀法**。四形态
+与双端死亡签名（现场按日志文本对号，可反推设备行为）：
+
+| 形态 | 典型场景 | 对端A | 对端B | 判读锚 |
+|---|---|---|---|---|
+| ① 静默丢弃（默认） | **会话表老化/被清除后老流量包被丢**（五元组不匹配且非 SYN）；IPS inline drop；LB 超时静默删 | 重传→**timeout** | timeout | ★清会话表≠发 RST：`reset session table` 类操作默认只删表项，老连接落黑洞，两端靠超时自灭 |
+| ② 双向注 RST（显式动作） | IPS block/reset、防火墙"会话复位"带 rst、抗D 拦截 | **reset by peer** | **reset by peer** | 只有配了 reset 动作的设备才产 RST 风暴 |
+| ③ 单向注入 | 只复位一侧 | RST | timeout/无感 | 一端 reset 一端 timeout 的分叉判据 |
+| ④ 发 FIN（伪优雅） | 上网行为管理/DLP"优雅复位"、部分 LB idle 超时 | EOF（似正常 close） | EOF | 日志只见"连接关闭"无任何错误 |
+
+**双签名交叉验证法**（reset 风暴案的定性利器）：同窗数两族日志——
+`reset by peer` 条数 vs `timeout` 条数。只有 RST 洪峰→注 RST 型设备或
+端点自杀；只有 timeout→静默黑洞型；**两族同时爆发→设备混合动作，或
+网络坑(timeout 族)+端点自杀(RST 族)两因叠加**。库侧配合：
+ESTABLISHED 态收 RST 每条必 +1 EstabResets（tcp.c:3016 状态直跳计数，
+先于日志，无时延——计数器长在产生日志的同一条 softirq 路径上，
+详见 `network.md` 断开路径节）。
+
 ### NAT / conntrack
 
 - 表满 early_drop → 丢包：判读与旋钮在 `network.md` conntrack 节（不复制）
