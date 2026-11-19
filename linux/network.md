@@ -458,8 +458,12 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
    伪造（对端优雅 FIN/close_notify 也打 reset by peer），此形态 TCP 层
    正常挥手 ⇒ EstabResets 不涨——"日志海量+计数平"反而是 SSL 优雅关闭
    风暴的指纹（全链见 internals/connection-lifecycle.md SSL 冤案节）。
-4. **判 RST 真伪动作**：`show ssl`/hostssl/sslmode 三查定路径 → 同窗
-   EstabResets 对账；辅助 AttemptFails（握手期 RST 的账）与对端 OutRsts。
+4. **判 RST 真伪动作**：`show ssl`/hostssl/**按连接族核客户端 sslmode 实际值**
+   （★JDBC 默认 ssl=false 明文、libpq 系默认 prefer 会协商——server ssl=on
+   ≠ 连接都 SSL；复制连接另独立核 pg_hba replication 行）→ 同窗
+   EstabResets 按节点对账；辅助 AttemptFails（握手期 RST 的账）与**对端
+   OutRsts**（客户端侧 resets sent 同窗涨=客户端 OS 自产 RST 的实锤，
+   平=中间设备注入线复活）。
 
 - **Retrans% = RetransSegs/OutSegs**：分子含 SYN-ACK 重传——**全队列堆积时
   （"SYN-ACK 重传空转"节）Retrans% 会被动抬升，不全是网络丢包**；

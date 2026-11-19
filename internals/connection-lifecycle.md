@@ -186,14 +186,21 @@ case SSL_ERROR_ZERO_RETURN:   // 对端发了 TLS close_notify —— SSL 层的
    `tcp_set_state` 的 ESTABLISHED→CLOSE 直跳 ⇒ **服务端 EstabResets 不涨、
    对端 OutRsts 不涨**（计数条件见 `../linux/network.md` SNMP 判读铁则）。
 
-**判读铁则**：
+**判读铁则（2026-11-19 实战升级：按"连接族"分账，不按实例）**：
 1. "日志海量 reset by peer + 两侧 RST 计数器都平"三方组合 = **SSL 优雅
    关闭风暴**的特征指纹——指向客户端批量主动断开（连接池 evict/心跳判死/
    发布），不是网络事故，RST/中间设备线全部出罪。
-2. 判 RST 真伪三查：`show ssl` / pg_hba `hostssl` 行 / 应用连接串
-   sslmode；再与同窗 EstabResets 对账（非 SSL 连接的真 RST 必跳计数）。
-3. 主备流复制同理：若复制连接走 SSL，备机 walreceiver 退出（CM 杀/正常
-   退出）在主库 walsender 侧也打 reset by peer——同样不需要真 RST。
+2. 判 RST 真伪四查：① `show ssl`；② pg_hba `hostssl` 行；③ **按连接族确认
+   客户端 sslmode 实际值**——★server ssl=on ≠ 连接都是 SSL，同一实例可并存
+   明文与 SSL 连接：**JDBC 默认 ssl=false（明文）**、**libpq 系默认
+   sslmode=prefer（server 开着就会协商成 SSL）**——"客户端没用 SSL"必须落实
+   到连接串/抓包，不能凭印象；④ 同窗 EstabResets 对账（明文连接的真 RST
+   必跳计数，优雅关闭不跳）。
+3. **主备复制连接的 SSL 状态独立于应用连接，单独核**：pg_hba 的
+   replication 行（hostssl/host）+ 备机连接参数 sslmode——应用全明文时复制
+   完全可能走 SSL（反之亦然）。复制非 SSL ⇒ 主库 walsender 的 reset by
+   peer=备机侧真发 RST（进程被杀/abort 带未读数据，CM 杀 walreceiver 即此
+   形态）；复制 SSL ⇒ 该文案可能是备机优雅退出，证据价值清零另取证。
 4. 写路径对称（old/light_secure_write 同 8 处里的 4 处）：
    `could not send data to client: ... reset by peer` 同罪。
 
