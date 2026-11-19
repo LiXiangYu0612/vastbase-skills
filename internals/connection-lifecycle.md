@@ -140,6 +140,34 @@ postmaster 拒连 StreamClose→comm_closesocket（:1115-1118）。
 `../linux/network.md`）。服务端对账：大规模踢人会留 **TcpOutRsts 尖峰**+pg_log
 `terminating` 文案，两者皆无=不是服务端踢的。
 
+### ★SSL 连接上的 "reset by peer" 是冤案（2026-11-19 源码定论，reset 风暴案判读前提）
+
+`be-secure.cpp` 的 read/write 四个函数（old/light_secure_read/write，
+light_comm 开关只是选 old 还是 light，be-secure.cpp:458 分发）**共 8 处硬编码
+`errno = ECONNRESET`**（:306/:316/:381/:391/:526/:534/:617/:625）——SSL 分支里：
+
+- `SSL_ERROR_SYSCALL` 且 n!=-1（**含 n==0：对端 TCP 直接 FIN 关闭、未发 TLS
+  close_notify**）→ `errno=ECONNRESET`（:306 等）
+- `SSL_ERROR_ZERO_RETURN`（对端发了 close_notify——**SSL 层的优雅关闭**）
+  → `errno=ECONNRESET`（:316 等）
+- `SSL_ERROR_SSL`（协议违例）fall-through 同设
+
+errno 随后被 `pqcomm.cpp:1255 → gs_comm_strerror()（libcomm.cpp:2309）
+→ mc_strerror(errno)（libcomm_err.cpp:32）→ strerror` 印成
+**"Connection reset by peer"**。非 SSL 分支（comm_recv=recv() 纯透传）无此
+问题——ECONNRESET 必来自内核真 RST。
+
+**判读铁则**：
+1. **SSL 连接的 "reset by peer" 日志不能当"收到 RST"的证据**——对端正常
+   FIN/close_notify/PQfinish/进程退出都会打成这句。此形态 TCP 层走正常四次
+   挥手 ⇒ **服务端 EstabResets 不涨、对端 OutRsts 不涨**——"日志海量 reset
+   by peer + 两侧 RST 计数器都平"三方组合 = SSL 优雅关闭风暴的特征指纹，
+   指向**客户端批量主动断开**（连接池 evict/心跳判死/发布），不是网络事故。
+2. 判 RST 真伪三查：`show ssl` / pg_hba `hostssl` 行 / 应用连接串 sslmode；
+   再与同窗 EstabResets 对账（真 RST 必跳）。
+3. 主备流复制同理：若复制连接走 SSL，备机 walreceiver 退出（CM 杀/正常
+   退出）在主库 walsender 侧也打 reset by peer——同样不需要真 RST。
+
 ## 判读速查（现象 → 证据 → 机制指向）
 
 | 现象 | 证据 | 机制指向 |
