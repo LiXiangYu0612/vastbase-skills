@@ -38,9 +38,10 @@
   io-storage、**cgroup（五控制器源码层：cpu.max 配额咬/throttled_usec 本组vs子孙/
   memory.high 罚睡 vs max OOM/pids fork EAGAIN/io.max×wbt 两层——"库慢 OS 不慢"
   与容器/K8S 限额判读的根）**、network、
-  **switch-side-logs（交换机侧 VRP 日志族判读：PKT_OUTDISCARD
-  族/OAMDL/interface brief/ARP——主机 Retrans 归因"中间网络"的唯一直接证据，
-  镜像口豁免）**、**net-diag-fullchain（网络全链路定责：探测/网卡五族/DOM/抓包
+  **switch-side-logs（交换机侧排查全景：日志族全表[实拍三族+工程口径七族]/
+  ERROR-DOWN 六原因码/DOM 光衰/STP TC/MAC 漂移/堆叠 VRRP/端口错包分诊/
+  闪断·丢包·断连风暴·环路四条 SOP——主机 Retrans 归因"中间网络"的
+  唯一直接证据，镜像口豁免）**、**net-diag-fullchain（网络全链路定责：探测/网卡五族/DOM/抓包
   SEQ 对账，八步 SOP+PCIe+对时）**、**net-midpath（中间层四段：L2 机制/L3 路径/
   中间设备/虚拟化云，间歇规律性断连与"计数器全绿仍抖"的判据富矿）**、
   file-descriptors、tracing-tools

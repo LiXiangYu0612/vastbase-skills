@@ -156,7 +156,7 @@ vastbase/
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
 | ★Linux cgroup 层（cpu.max/cpuset/pids/memory/io 控制器，源码级） | `linux/cgroup.md` | CPU 配额真咬（nr_throttled Δ）/ throttled_usec 本组vs子孙陷阱 / memory.high 罚睡 vs max OOM / pids 撞限 fork EAGAIN / io.max 与 wbt 两层次序 / K8S 嵌套子配额 min 继承 |
 | Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清） |
-| 交换机侧日志与端口判读（VRP/S 系列） | `linux/switch-side-logs.md` | 拿到交换机 logbuffer/interface brief/ARP；PKT_OUTDISCARD 族+OAMDL 丢包告警判读；主机 Retrans 归因"中间网络"；镜像口豁免 |
+| ★交换机侧排查（日志/端口/表项/SOP，VRP/S 系列） | `linux/switch-side-logs.md` | 拿到 logbuffer/trapbuffer/interface brief/ARP 要判读；ERROR-DOWN 六原因码+自恢复；link-flap/DOM 光衰；STP TC/MAC 漂移/eth-trunk/堆叠/VRRP 族表；PKT_OUTDISCARD 族+OAMDL（实锚）；闪断/丢包/断连风暴/环路四条 SOP；镜像口豁免 |
 | ★网络全链路诊断（网卡/光模块/交换机/抓包） | `linux/net-diag-fullchain.md` | Retrans/RTT 劣化逐段定责：ping/mtr/iperf3 定性→ethtool -S 五族→DOM 光功率对端互读→交换机端口→双端抓包 SEQ 对账；换件验证底数对账；PCIe/AER；双端对时前置 |
 | ★中间层网络诊断（二层/三层/中间设备/虚拟化） | `linux/net-midpath.md` | 间歇/规律性断连且主机计数器全绿：bonding 切换断流/LACP 落单/hash 极化、STP/MAC 漂移/堆叠、VRRP/回程不对称/PMTUD 黑洞、防火墙 idle 掐断/NAT 源端口耗尽/LB/DNS 首连延迟、迁移 stun/virtio/云限速——症状指纹速查表 |
 | Linux 文件描述符层（fdtable/rlimit/proc 渲染） | `linux/file-descriptors.md` | fd 分类树判读：pgsql_tmp 活跃落盘、version.cfg 泄漏、fd 逼近 rlimit |
