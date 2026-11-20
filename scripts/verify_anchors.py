@@ -112,6 +112,17 @@ CLAIMS = [
     ("lk", "net/ipv4/tcp.c", "TCP_INC_STATS(sock_net(sk), TCP_MIB_ATTEMPTFAILS);", 5096, "network.md"),
     ("lk", "net/ipv4/tcp_input.c", "void tcp_reset(struct sock *sk, struct sk_buff *skb)", 4852, "network.md"),
     ("lk", "net/ipv4/tcp_input.c", "void tcp_done_with_error(struct sock *sk, int err)", 4838, "network.md"),
+    # 2026-11-20 page-cache.md 立件登记
+    ("lk", "include/linux/fs.h", "struct address_space {", 473, "page-cache.md"),
+    ("lk", "include/linux/fs.h", "struct address_space_operations {", 401, "page-cache.md"),
+    ("lk", "include/linux/fs.h", "#define PAGECACHE_TAG_DIRTY", 495, "page-cache.md"),
+    ("lk", "include/linux/mm_types.h", "struct folio {", 401, "page-cache.md"),
+    ("lk", "include/linux/mmzone.h", "enum lru_list {", 386, "page-cache.md"),
+    ("lk", "mm/filemap.c", "struct folio *__filemap_get_folio_mpol(struct address_space *mapping,", 1941, "page-cache.md"),
+    ("lk", "mm/readahead.c", "static void do_page_cache_ra(struct readahead_control *ractl,", 315, "page-cache.md"),
+    ("lk", "mm/swap.c", "void folio_add_lru(struct folio *folio)", 506, "page-cache.md"),
+    ("lk", "mm/page-writeback.c", "void __folio_mark_dirty(struct folio *folio, struct address_space *mapping,", 2670, "page-cache.md"),
+    ("lk", "mm/page-writeback.c", "bool filemap_dirty_folio(struct address_space *mapping, struct folio *folio)", 2710, "page-cache.md"),
 ]
 
 

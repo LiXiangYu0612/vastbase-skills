@@ -79,6 +79,7 @@
 | CPU 层（loadavg/softirq 预算/iowait 记账/切换/EEVDF/PSI） | ✅深（loadavg.c/softirq.c/core.c/stat.c 全核；EEVDF/PSI 锚点） | linux/cpu.md |
 | ★四域诊断树（跨层联判入口） | ✅路由级（2026-11-03 立，st=70% 案沉淀：五列基线→A~G 支/CPU↔Network 五通路/组合拳指纹；只路由不复制，阈值全部引自四域文件） | linux/os-triage.md |
 | 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引 | linux/memory.md |
+| 页缓存核心机制（address_space/XArray/folio/LRU/a_ops/截断） | ✅深（2026-11-20 立，7.1-rc4 行级 10 文件精读；DBA 判读速查+双缓存互动） | linux/page-cache.md |
 | IO 层（page-writeback 四闸门/readahead/iostat 口径/ext4 默认） | ✅深；★blk-mq 行级+★现代 SSD/NVMe 判读域（2026-11-19 用户令"HDD 那一套不适用"：调度器默认由队列拓扑定 NVMe=none/await 三档/SLC cliff 尾刺判读/PLP 与 VWC 源码位/smart-log 六字段判读表/rot=固件申报不可信 core.c:1681/温度降速/TRIM-WAF；NVMe 驱动 core.c+nvme.h 行级）；blk-mq 四文件行级；wbt/iomap 锚点 | linux/io-storage.md |
 | ★cgroup 层（cpu.max/CFS bandwidth/cpuset/pids/memory.high·max/io.max×wbt 分层） | ✅深（2026-11-19 立，7.1-rc4 行级精读 12 文件：throttle/period_timer/distribute 全链、cpu.stat 双 show 本组vs子孙陷阱、high 罚睡 vs max OOM 分叉、pids 逐级 charge、blk-throttle+rq_qos hook 次序；对接 AWR Cgroup 章/OOM 四型/wbt 案） | linux/cgroup.md |
 | 网络层（收包预算/两级连接队列/syncookies/TIME_WAIT/retries2/conntrack/关闭链路/客户端消失三形态） | ✅深；keepalive 默认 7200s·9·75s 实锚、conntrack 文案实锚、reqsk 回调名实锚；**2026-11-17 全锚 v7.1-rc4 复核**（8 命中/2 更正：mib 定义=snmp.h:196-197、early_drop=:1463） | linux/network.md |

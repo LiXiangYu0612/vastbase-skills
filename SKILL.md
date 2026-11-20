@@ -154,6 +154,7 @@ vastbase/
 | Linux CPU 层（负载/软中断/切换/iowait 口径） | `linux/cpu.md` | 判读 OS 段 CPU 列：load 含 D 状态、iowait 双刃、ksoftirqd、nvcswch |
 | Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层；构成逐项哪里异常（meminfo 逐键+LRU 四链+构成×水位联动） |
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
+| ★Linux 页缓存核心机制（address_space→XArray→folio→LRU，源码级） | `linux/page-cache.md` | 页缓存怎么组织/查找/驱逐/回写；a_ops（direct_IO 旁路入口）；XArray 三标记；LRU 五链与 swappiness 作用点；truncate 回写风暴；errseq |
 | ★Linux cgroup 层（cpu.max/cpuset/pids/memory/io 控制器，源码级） | `linux/cgroup.md` | CPU 配额真咬（nr_throttled Δ）/ throttled_usec 本组vs子孙陷阱 / memory.high 罚睡 vs max OOM / pids 撞限 fork EAGAIN / io.max 与 wbt 两层次序 / K8S 嵌套子配额 min 继承 |
 | Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清） |
 | ★交换机侧排查（日志/端口/表项/SOP，VRP/S 系列） | `linux/switch-side-logs.md` | 拿到 logbuffer/trapbuffer/interface brief/ARP 要判读；ERROR-DOWN 六原因码+自恢复；link-flap/DOM 光衰；STP TC/MAC 漂移/eth-trunk/堆叠/VRRP 族表；PKT_OUTDISCARD 族+OAMDL（实锚）；闪断/丢包/断连风暴/环路四条 SOP；镜像口豁免 |
