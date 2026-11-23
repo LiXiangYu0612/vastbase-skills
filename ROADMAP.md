@@ -78,7 +78,7 @@
 |---|---|---|
 | CPU 层（loadavg/softirq 预算/iowait 记账/切换/EEVDF/PSI） | ✅深（loadavg.c/softirq.c/core.c/stat.c 全核；EEVDF/PSI 锚点） | linux/cpu.md |
 | ★四域诊断树（跨层联判入口） | ✅路由级（2026-11-03 立，st=70% 案沉淀：五列基线→A~G 支/CPU↔Network 五通路/组合拳指纹；只路由不复制，阈值全部引自四域文件） | linux/os-triage.md |
-| 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引；2026-11-23 补 tmpfs 多实例节（独立配额/同一物理池/SysV=shmall·POSIX=挂载 size，shmem.c 行级）+ **显式大页节**（hugetlb 预留制 vs THP 两套账，meminfo.c/hugetlb.c 行级；VastBase enable_huge_pages/huge_page_size=sysv_shmem.cpp:82 实锚——全清单对账发现的缺口） | linux/memory.md |
+| 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引；2026-11-23 补 tmpfs 多实例节（独立配额/同一物理池/SysV=shmall·POSIX=挂载 size，shmem.c 行级）+ **显式大页节**（hugetlb 预留制 vs THP 两套账，meminfo.c/hugetlb.c 行级；VastBase enable_huge_pages/huge_page_size=sysv_shmem.cpp:82 实锚——全清单对账发现的缺口）+ **shmem swap 语义节**（默认可换出 shmem_writeout:1594；三道闸 SHMEM_F_LOCKED/tmpfs noswap 挂载项/无 swap 设备→钉死；hugetlb 从不换；PG 主段=SysV 可换） | linux/memory.md |
 | 页缓存核心机制（address_space/XArray/folio/LRU/a_ops/截断） | ✅深（2026-11-20 立，7.1-rc4 行级 10 文件精读；DBA 判读速查+双缓存互动） | linux/page-cache.md |
 | XFS 机制与删除恢复（AG/FSBNO 编码/删除三阶段/五级路径） | ✅深（2026-11-23 立，收割 vbdul 战役+xfs-recovery skill 全量；156 真机/204 实测锚；★free-scan 级未真机实测挂账在案） | linux/xfs.md |
 | ext4 机制与删除恢复（位图/删除即清 extent/正道=free 扫描/JBD2） | ✅深（2026-11-23 立，收割 vbdul 战役 memory 定案：300 行端到端/odd-align/位图完整性对账法） | linux/ext4.md |

@@ -143,6 +143,34 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   占用 `grep Shmem /proc/meminfo`（全部实例+SysV/POSIX 段总账，且 Shmem 已
   计入 Cached——见 free 口径节，"Cached 高=可回收"会被高估）
 
+## shmem 与 swap：共享内存可换出，三道闸 + 一个从不换的例外（2026-11-23 立）
+
+- **默认可换出**：tmpfs/SysV/POSIX 共享内存页都是 swap-backed 页，回收不能
+  像文件页那样"丢弃重读"，只能换出到 swap——`shmem_writeout`
+  （mm/shmem.c:1594；旧内核函数名 shmem_writepage）；再访问走 major
+  fault 从 swap 换回（`shmem_swapin_folio`，:2290）。**换出≠丢数据**，
+  代价是再访问延迟 + swap IO
+- **三道闸让它不换**（shmem_writeout 入口两个 if，:1604-1607）：
+  1. `SHMEM_F_LOCKED`（:1604；shmctl SHM_LOCK 置位/解除 :2939-2947）——
+     锁定段的已驻留页钉死；受 RLIMIT_MEMLOCK 管（Oracle lock_sga 同层）
+  2. `sbinfo->noswap`（字段 :123、闸 :1604、fsparam "noswap" :4531、
+     解析 :4685-4690）——**tmpfs noswap 挂载项**，现代内核按实例整段豁免
+     （:4842 注释：无反向 "swap" 项，noswap 不可事后撤销）
+  3. `!total_swap_pages`（:1607）——**无 swap 设备**（swapoff 机）：
+     shmem 无处可换 → redirty 页回 LRU = **不可回收的钉死 RAM**，只顶
+     水位直到 OOM。DB 机不开 swap 时 /dev/shm 大文件 = 零回收保护
+- **swap 满同样换不出**：`folio_alloc_swap` 失败（:1682 起）→ recalc 后
+  页放回——换出失败不丢数据，全部转化为内存压力
+- **从不换的例外 = hugetlb 显式大页**：预留制、不进 LRU、无 swap 语义
+  （见显式大页节）——DB 防 shared_buffers 被换出的正道就是开大页
+- **PG/VastBase 主共享段默认可换出**：Linux 主段走 SysV shmget
+  （sysv_shmem.cpp；SHM_HUGETLB 见大页节）→ 落 shm_mnt 内部实例
+  （shmem.c:46）→ 命"默认可换出"语义。**不开大页时 shared_buffers
+  整段都可能被换到 swap**——buffer 池自己的冷热替换是进程内另一层，
+  与 OS 层整段可换不冲突、别混
+- 判读：si/so（vmstat 换出速率）+ pgmajfault（shmem 换回证据）+ meminfo
+  `Shmem` 与 `Swap` 对账；swapoff 机直接看 Shmem 占比与 OOM 距离
+
 ## 透明大页（THP）
 
 - 开关族 `transparent_hugepage_flags`（mm/huge_memory.c:59）：always/madvise/
