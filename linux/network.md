@@ -138,6 +138,41 @@ backlog+somaxconn（只买缓冲时间）→ tcp_abort_on_overflow=1（快失败
 - keepalive 首探：内核编译默认 7200s（两层口径与实测见"客户端消失三形态表"；
   env-A 实测 sysctl=30s）——DB 场景仍应靠应用层心跳/连接池探活
 
+### 网络恢复后的死亡揭晓与 RST 风暴（三层钟 / 反射 RST / 恢复后三黑洞）
+
+2026-11-23 案（L2 闪断+恢复后秒级几十条 RST）Q&A 定论，接上节重传机制：
+
+- **三层钟**：内核 TCP（retries2≈15~30 分钟）≫ 应用 socketTimeout/
+  queryTimeout（1~3s 硬钟）> 连接池借出失败轮换。秒级闪断杀不死内核，
+  杀得死应用——"重传保住了管道，没人承诺等应用"。
+- **ESTAB 是单边视角**：只证明本端没放弃，不证明对端还在。恢复后不回来
+  的连接三类：应用已 close（恢复时早不是 ESTAB）/对端先死成半开（首包
+  换 RST）/池中死连接借出即死（write 只进内核缓冲，表象"一直 timeout"）。
+  双端都在的空闲连接（无数据在飞=无钟在走）确实自愈——幸存者无感知。
+- **报错时刻 ≠ 成因时刻**：分叉在故障窗内静默形成，恢复后首笔流量揭晓
+  ——应用报错集中在恢复后不是"恢复引发"，是"恢复才有机会发现"。
+- **RST 风暴的生产者是内核反射，不是应用 close**：服务端带未确认数据
+  重传，恢复通行后打到客户端**已无 socket** 的主机 → `tcp_v4_rcv` 查无
+  连接 → `tcp_v4_send_reset` 自动回 RST（net/ipv4/tcp_ipv4.c，零应用
+  参与）。触发钟=重传恢复通行的同一波 → **1 秒几十条同步 RST** 的形态
+  签名。socket 消失渠道不限：close 带未读/SO_LINGER=0/FIN 走完/池重建
+  进程重启/**Windows 客户端 TcpMaxDataRetransmissions 默认 5 次**
+  （≈10~30s 内核 abort，比 Linux retries2 短两个量级，秒级闪断即杀在飞
+  连接）。
+- 更正旧口径：write timeout/keepalive 死亡路径部分条件会
+  `tcp_send_active_reset`（nstat AbortOnTimeout 族计数器）——"内核死亡
+  从不发 RST"不成立。
+- **恢复后持续 timeout 三黑洞**（链路 up ≠ 可用）：①交换机 MAC 表 stale
+  +老化窗（典型 300s，单播黑而广播活）②重连风暴打满 accept/SYN 队列
+  （ListenOverflows；tcp_abort_on_overflow=0 默认只丢不回 RST→表现恰为
+  timeout 而非 reset）③conntrack 表满：early_drop 先淘汰**幸存老 ESTAB**
+  （打成 INVALID 双向黑洞="双端都活却不恢复"的 conntrack 版），淘汰不动
+  才丢新 SYN。
+- **铁判据**：报错文案 reset=状态死（路径通）；timeout=包没到对端 TCP。
+  tcpdump 见包而 `TcpInSegs` 不涨=死在 netfilter/conntrack；根本不见包=
+  MAC 黑洞。客户端 RST 与服务端重传**同 seq 配对** + 客户端 TcpOutRsts
+  涨幅 ≈ 服务端日志 reset 条数 = 反射机制实锤。
+
 ## firewalld reload（firewall-cmd --reload 会不会断/reset 连接，源码定论）
 
 **调用链**：`firewall-cmd --reload` → D-Bus `org.fedoraproject.FirewallD1.reload()`
@@ -391,7 +426,73 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   somaxconn 不用碰；只有计数在动才算风暴进行中。CPU 状态属**待查项**，
   不得拿其他案场的 CPU 数字代入本案（2026-11-03 用户点名两案混线）
 
+## 网络中断与存量连接死亡（"网络恢复了连接反而断开"的机制定论，2026-11-22 用户实战问出）
+
+**一句话定论**：网络恢复这个动作本身不杀任何连接。杀连接的是故障期间一直
+在倒计时的各类"死亡判定"；恢复只是让两端第一次成功互发报文——第一次往返
+一通，故障期间已经死了的连接当场验尸。**断开集中爆发在恢复时刻，判决书
+其实故障期间就写好了**。
+
+**机制底座**：故障期间两端 TCP 栈没有任何东西暂停——RTO 重传按指数退避
+持续在发（被黑洞吞掉）、`icsk_retransmits` 持续消耗预算、应用定时器照跑。
+判死看的是**时间预算耗尽与否**，与网络恢复无关。
+
+### 死亡路径与中断时长的判定树（先问中断多久）
+
+| 中断时长 | TCP 层能否自救 | 还断的话凶手在哪 |
+|---|---|---|
+| 秒级~分钟级（远小于 retries2 预算） | **必能自救**：退避才走 1~2 步，恢复后首个重传被 ACK 即续命 | 全在端上（见下三真凶），TCP 层无罪 |
+| >~15 分钟（retries2 预算耗尽） | 内核已判死 | 存量 ESTAB 全灭，恢复无意义 |
+
+- 预算锚（v7.1-rc4）：`tcp_retransmit_timer` 里
+  `retransmits_timed_out(sk, sysctl_tcp_retries2, icsk_user_timeout)` →
+  `tcp_write_err()` → ETIMEDOUT 销毁（tcp_timer.c:282-291）；
+  `TCP_USER_TIMEOUT` 提前判定（:283 直接入 expired）；零窗口探测同一预算
+  （:420）；retries1 触发黑洞探测+路由重查（:264-268）；孤儿连接走
+  `tcp_orphan_retries` 更快
+- keepalive（默认 7200s）在短中断里根本轮不到说话
+
+### 短中断（秒~分钟级）后仍断的三真凶
+
+1. **应用层先放弃（头号真凶）**。应用超时计时起点是"请求发出"不是"故障
+   开始"——故障把一次 100ms 查询拖过应用 socket timeout（常见 10~60s）/
+   心跳/池校验 → 应用**主动** close/abortive close。指纹：断开风暴出现在
+   **恢复后 0~几十秒**且相对恢复时刻聚簇在**固定偏移**（30s/60s 整数档）
+   = 应用超时的最硬指纹。连接是客户端杀的，不是网络杀的。
+2. **对端状态在故障窗口内死了**。主机/进程重启恰在故障期间——故障只有
+   5 秒，重启了就是重启了。恢复后首个重传/数据到达 → 对端无 TCB → RST。
+   复制流同批断=对端（walreceiver 侧或上游）也死了，指向此类端事件。
+3. **端上自己的 netfilter**。**"中间没有防火墙"≠"端上没有"**：主机本机
+   firewalld/iptables 的 conntrack 表项仍属"端侧状态"。中间只有交换机只
+   排除了中间段，端上 netfilter 不因此自动出罪。
+
+### RST 不重传与僵尸半开
+
+**RST 不入重传队列**：abortive RST（SO_LINGER 0/未读数据，tcp.c:3191,3264）
+是一次性发送，丢失即永久丢失。故障期间对端发的 RST 被吞 → 我方停在 ESTAB
+假活。恢复后我方一发数据，对端内核无 TCB 现发新 RST（tcp_ipv4.c:717,2331
+无主包回 RST）→ 断；**空闲且无 keepalive 的连接两边永久僵尸**。有业务流量
+的连接恢复后首个报文即完成验尸。
+
+### 现场判定表（谁先动手）
+
+| 线索 | 指向 |
+|---|---|
+| 服务端日志 "unexpected EOF on client connection" / 被动收 RST | 客户端方向先断 → 真凶 1 或 2 |
+| 断开时刻 = 恢复 + 固定偏移（30s/60s 档） | 真凶 1 应用超时 |
+| 断开与恢复零偏移、同秒成批 + 复制同断 | 真凶 2 重启类端事件 / 僵尸验尸 |
+| 抓包 RST 来源 IP | 直接定凶手；**L2 交换机不产 RST**（`net-midpath.md` 四形态出罪判据） |
+| RST 族 vs timeout 族日志条数 | 双签名交叉（`net-midpath.md`）：只有 reset→端点自杀；只有 timeout→静默黑洞；两族齐爆→混合 |
+
+### 对照组（能救回来的，判据=只丢包不丢状态）
+
+秒级链路闪断、交换机重启（L2 无状态）、CAM/ARP 表项老化（首个重传包自愈）、
+STP 收敛换路（seq 对得上即续命）、对端 ACK 丢失。判据一条：**故障期间有
+没有任何一方的状态（TCB / 端上 conntrack / 应用会话）被销毁或超时**——
+有，重传无解；没有，重传全能救。
+
 ## TCP RTT：估计器与 ss -ti 口径（RTT avg/p95 / Worst peer / Send-Q 的本体）
+
 
 **估计器**（net/ipv4/tcp_input.c:1070 `tcp_rtt_estimator`，ACK 到达时由
 `tcp_ack_update_rtt`(:3492) 驱动）——Jacobson SIGCOMM'88 原版：
@@ -617,7 +718,10 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   RELATED,ESTABLISHED ACCEPT、REJECT=icmp-host-prohibited；nftables 临时表
   防护门在 0.9.3 与 master 一致。0.6.3 的 fw.py 未单独核对（reload 六步以
   master 为准）
-
+- **2026-11-22 新增「网络中断与存量连接死亡」节**（用户实战问出"网络恢复
+  后已有连接为什么断"）：死亡路径判定树（中断时长 vs retries2 预算）、短
+  中断三真凶（应用超时固定偏移指纹/对端重启/端上 netfilter）、RST 不重传
+  僵尸半开；tcp_timer.c/tcp_output.c 行级锚见来源六次补读
 ## 来源
 
 - 内核源码基线 `<linux-7.1-rc4-src>`（7.1-rc4）精读（2026-10-25）：
@@ -669,6 +773,12 @@ OldestXmin → vacuum 清不掉死元组 → 膨胀（`mvcc-visibility.md`/`auto
   src/firewall/core/ipXtables.py（build_set_policy_rules 仅 -P DROP、
   DEFAULT_REJECT_TYPE=icmp-host-prohibited、build_default_rules 第一条
   RELATED,ESTABLISHED,DNAT ACCEPT）
+- 六次补读（2026-11-22，中断死亡节）：net/ipv4/tcp_timer.c:282-291
+  （retries2+user_timeout → expired → tcp_write_err）、:264-268（retries1
+  黑洞探测+dst_negative_advice）、:420（零窗探测 max_probes=retries2）、
+  :103-140（tcp_out_of_resources 孤儿加速杀+active RST）、
+  net/ipv4/tcp_output.c:3850（tcp_send_active_reset 一次性发送不入重传队列
+  →"RST 不重传"定论）；无主包回 RST 复用三次补读 tcp_ipv4.c:717,2331 锚
 
 ## 知识网
 

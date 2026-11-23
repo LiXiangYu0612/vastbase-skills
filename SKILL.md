@@ -119,6 +119,7 @@ vastbase/
 | ★OPT_JOIN 代价日志判读 | `sql/references/optjoin-cost-trace.md` | 拿到 pglog 的 OPT/OPT_JOIN debug + 统计信息要复算逐 path sel/rows/cost 与选择过程：行格式→源码计算点对照表、公式代入实测样本（137 行全对账）、add_path/precheck 支配规则、整理五步 SOP |
 | DISTINCT ON×标量子查询求值位置 | `sql/references/distinct-on-subplan-eval.md` | DISTINCT ON 视图等价改写/子查询执行次数评估：VB=去重后置、PG17=去重前置（实测相反）；tie 行翻面与 tiebreaker；`loops` 诊断配方 |
 | ★拼接 IN→EXISTS 等价改写 | `sql/references/inlist-concat-to-exists.md` | HIS 老 SQL `col1\|\|col2 IN (select ...)` 改两列等值 EXISTS 的等价性判定：拼接单射前提、幽灵放行机制（实测复现）、16 场景红绿对账配方、rn=1 tie 压行行为 |
+| ★UNION ALL 视图分支类型不一致→谓词完全不推 | `sql/references/union-all-view-branch-type-mismatch.md` | 大视图外等值条件推不进/`Subquery Scan` 顶层 Filter/全分支全表扫：某分支基表列基类型（如 int）≠其余分支 → 整视图不可展平（tlist_same_datatypes 闸门，PG/OG 源码行号）；`\d`/`pg_get_viewdef` 均不显隐式 cast；逐分支类型对账配方+修复（显式 cast+同型表达式索引，三引擎实测） |
 | SQLHC 配套与速查 | `sql/sqlhc-integration.md` · `sql/sqlhc-quickref.md` · `sql/optimizer-usage.md` · `sql/quick-reference.md` | SQLHC 集成细节、速查表、使用指引（并入件的配套四件） |
 | SQL PATCH 计划固化/语句拦截 | `sql/sql-patch.md` | 症状9B"锁计划"的官方出口：按 unique_sql_id 注入 hint（204 实测 dbe_sql_util 六函数）；ABORT 补丁=应急杀语句；不生效三查（enable/id/不支持 hint 被静默剔除） |
 | 核心等待事件源码判读 | `internals/core-events-deep-dive.md` | Top Event 定性：触发路径、正常形态、异常判据（六事件） |
@@ -155,8 +156,10 @@ vastbase/
 | Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层；构成逐项哪里异常（meminfo 逐键+LRU 四链+构成×水位联动） |
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
 | ★Linux 页缓存核心机制（address_space→XArray→folio→LRU，源码级） | `linux/page-cache.md` | 页缓存怎么组织/查找/驱逐/回写；a_ops（direct_IO 旁路入口）；XArray 三标记；LRU 五链与 swappiness 作用点；truncate 回写风暴；errseq |
+| XFS 机制与删除恢复判读 | `linux/xfs.md` | AG/SB·AGF·AGI·AGFL/双空闲 btree/大端；FSBNO=agblklog 位域编码坑；删除三阶段（BMX 残留=恢复窗口）；五级恢复路径与实测状态；xfs_db/fiemap 单位坑 |
+| ext4 机制与删除恢复判读 | `linux/ext4.md` | 组结构/位图/INODE_UNINIT 占位组；★删除即清 extent（与 XFS 相反）→恢复正道=free 块内容扫描（300 行端到端实测）；JBD2 双层字节序与 tag 解析；odd-align/同设备输出铁律 |
 | ★Linux cgroup 层（cpu.max/cpuset/pids/memory/io 控制器，源码级） | `linux/cgroup.md` | CPU 配额真咬（nr_throttled Δ）/ throttled_usec 本组vs子孙陷阱 / memory.high 罚睡 vs max OOM / pids 撞限 fork EAGAIN / io.max 与 wbt 两层次序 / K8S 嵌套子配额 min 继承 |
-| Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清） |
+| Linux 网络层（收包路径/两级连接队列/假死连接） | `linux/network.md` | 连接拒绝/慢、ListenOverflows、TIME_WAIT、假死持锁会话、CLOSE_WAIT 堆积（=忙/卡会话，无 sysctl 可清）；★网络恢复后连接不恢复/秒级几十条 RST 风暴（三层钟/内核反射 RST/恢复后三黑洞判据） |
 | ★交换机侧排查（日志/端口/表项/SOP，VRP/S 系列） | `linux/switch-side-logs.md` | 拿到 logbuffer/trapbuffer/interface brief/ARP 要判读；ERROR-DOWN 六原因码+自恢复；link-flap/DOM 光衰；STP TC/MAC 漂移/eth-trunk/堆叠/VRRP 族表；PKT_OUTDISCARD 族+OAMDL（实锚）；闪断/丢包/断连风暴/环路四条 SOP；镜像口豁免 |
 | ★网络全链路诊断（网卡/光模块/交换机/抓包） | `linux/net-diag-fullchain.md` | Retrans/RTT 劣化逐段定责：ping/mtr/iperf3 定性→ethtool -S 五族→DOM 光功率对端互读→交换机端口→双端抓包 SEQ 对账；换件验证底数对账；PCIe/AER；双端对时前置 |
 | ★中间层网络诊断（二层/三层/中间设备/虚拟化） | `linux/net-midpath.md` | 间歇/规律性断连且主机计数器全绿：bonding 切换断流/LACP 落单/hash 极化、STP/MAC 漂移/堆叠、VRRP/回程不对称/PMTUD 黑洞、防火墙 idle 掐断/NAT 源端口耗尽/LB/DNS 首连延迟、迁移 stun/virtio/云限速——症状指纹速查表 |
