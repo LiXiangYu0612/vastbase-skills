@@ -121,6 +121,28 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   驱逐后很快又被读回=工作集大于缓存），/proc/vmstat 的 workingset_refault
   计数持续涨 = 页缓存容量与工作集不匹配，加内存或收数据量，调参救不了
 
+## tmpfs 多实例：配额独立，物理内存同一池
+
+- **每个 `mount -t tmpfs` = 独立实例**：各自 superblock/shmem_sb_info
+  （mm/shmem.c:164 SHMEM_SB），size/nr_inodes 配额与页池互不共享；默认
+  size=**物理内存一半**（shmem.c:147-149 `totalram_pages()/2`；fill_super 注释
+  原话 "per tmpfs instance"）——多个实例默认上限相加超 RAM 数倍属正常：
+  **上限不是预留**，挂载不占内存，写多少占多少
+- **配额互不影响，物理内存互相竞争**：/run 填满不占 /dev/shm 的配额；但所有
+  实例的页都是真实 RAM（meminfo `Shmem` 总账），多实例合计挤占匿名页/页缓存
+  → 回收换出（shmem 页可 swap，shmem_swapin_folio 族）或 OOM；内核**不做
+  跨实例总量协调**
+- **SysV 与 POSIX 共享内存走不同实例**（判上限别混）：
+  - SysV（shmget）：内核内部实例（shmem.c:46 `shm_mnt`、:5436 kern_mount，
+    fill_super 对 SB_KERNMOUNT 不设 blocks 上限、SB_NOUSER）——总量上限=
+    `kernel.shmall`（ipc/shm.c:721-722 newseg：shm_tot+numpages>shm_ctlall →
+    ENOMEM），**不受任何 tmpfs 挂载 size 影响**
+  - POSIX（shm_open）：在 /dev/shm 挂载下建文件 → 吃**该挂载**的 size；
+    Oracle AMM 要求 /dev/shm ≥ MEMORY_MAX_TARGET、不足 ORA-00845 的根源即此
+- 判读：单实例用量 `df -h -t tmpfs`（statfs 读各实例 sbinfo 计数）；全局真实
+  占用 `grep Shmem /proc/meminfo`（全部实例+SysV/POSIX 段总账，且 Shmem 已
+  计入 Cached——见 free 口径节，"Cached 高=可回收"会被高估）
+
 ## 透明大页（THP）
 
 - 开关族 `transparent_hugepage_flags`（mm/huge_memory.c:59）：always/madvise/
@@ -139,6 +161,28 @@ fp = (MAX_SWAPPINESS − swappiness) × (total_cost+1) / (file_cost+1)
   足够 = 碎片化**（order0 单页满天飞、连 2MB 都拼不出），THP/大页分配失败
   的前兆；此时 compact_stall 会同步涨（碎片触发直接压缩）。碎片率低但
   compact_stall 高 = 分配突发而非持续碎片
+
+## 显式大页（hugetlb）：预留制，与 THP 是两套账
+
+- **两套大页并存，/proc/meminfo 分开记**：THP（透明，上节）走
+  `AnonHugePages/ShmemHugePages/FileHugePages`（meminfo.c:142-148）；显式大页走
+  `HugePages_Total/Free/Rsvd/Surp + Hugepagesize + Hugetlb:`（meminfo.c:173 →
+  hugetlb.c:4533-4552 hugetlb_report_meminfo）——判读先分清看的是哪套
+- **预留制 + 碎片条件**：`vm.nr_hugepages` 走 set_max_huge_pages
+  （hugetlb.c:3746，store 入口 :4063）**逐页圈物理连续内存**——运行时写入在
+  内存碎片化后分配不满（回显 < 写入值），**关键库机器用 grub hugepages= 启动预留**
+  最可靠；`nr_overcommit_hugepages`→Huge_Surp（超发页，可回收）；进程预留未触碰
+  =HugePages_Rsvd
+- **DB 侧**（判读别混）：
+  - **VastBase/openGauss 支持显式大页**：GUC `enable_huge_pages`（attr_storage）
+    + `huge_page_size`（**单位=BLCKSZ 块数**；0=取系统默认，读不到兜底 2MB）；
+    GetHugepageSize 组 `SHM_HUGETLB`+尺寸位移编码进 shmget
+    （sysv_shmem.cpp:82-118，6.0.0 树实锚；GUC 默认值定义位在 6.0 分表 guc
+    未定位——部署核对以 `show enable_huge_pages` 为准）
+  - Oracle：use_large_pages + SysV SGA 路线；lock_sga 受 RLIMIT_MEMLOCK 管
+    （memlock rlimit），与 Linux 显式大页预留是两层配合
+- 判读：`grep -i huge /proc/meminfo`——**Free 长期 0 且 Surp>0 = 预留不足在吃
+  超发**（该加预留或加 huge_page_size 对齐）；Total<写入值 = 碎片没分满
 
 ## 页表（PageTables / VmPTE）：fork 税与大页收益的读数
 
@@ -306,6 +350,8 @@ VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 Vm
 | kswapd 长期吃 CPU | `top -H` | 回收跟不上分配；先减压力源 |
 | workingset_refault 涨 | `grep workingset /proc/vmstat` | 页缓存容量 < 工作集（workingset.c:546） |
 | NUMA Local Ratio 低 | `cat /proc/<pid>/numa_maps`；`/sys/devices/system/node/node*/`（numactl 未装也可） | NUMA 节：local/(local+other)<90% 失衡，分"内存不足 vs 布局错配" |
+| /dev/shm 满（ORA-00845 类） | `df -h -t tmpfs`；`grep Shmem /proc/meminfo` | POSIX shm 吃该挂载 size；SysV 走内部实例、上限=kernel.shmall（本文件 tmpfs 节） |
+| 大页疑虑（SGA/共享内存） | `grep -i huge /proc/meminfo` | 显式大页看 HugePages_* 行（预留制）；THP 看 AnonHugePages——两套账别混（本文件大页节） |
 
 ## 常见错误
 
@@ -317,6 +363,11 @@ VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 Vm
 | OOM 只看被杀进程 | 受害者是打分最高者，不一定是元凶 | dump_tasks 全表 + 总账核算（DB 配比） |
 | 53200 与 OOM kill 混为一谈 | DB 限额拦截 vs OS 物理耗尽，两层闸门 | 先分层再定责（operator-memory.md / 本文件） |
 | buff/cache 高当内存不足 | 绝大部分是可回收页缓存/SReclaimable | 看 MemAvailable 与回收速率 |
+| 以为多个 tmpfs 共用 /dev/shm 配额 | 每挂载=独立实例独立上限（fill_super "per tmpfs instance"） | 各看各 df；全局看 Shmem 总账 |
+| 拿 /dev/shm size 判 SysV shm 上限 | SysV 走内核内部实例（不限 blocks），上限=kernel.shmall | `ipcs -m` 总页数对 shmall 核 |
+| 把 AnonHugePages 当显式大页用量 | 那是 THP（透明合并）的账；显式大页在 HugePages_* 行 | 两套分开对账（meminfo.c:142-148 vs :173） |
+| nr_hugepages 运行时写入即足额 | 碎片化会分不满（set_max_huge_pages 逐页要连续物理页） | 核对回显值；关键机器 grub 启动预留 |
+| VastBase 侧找 huge_pages GUC | OG 的 GUC 叫 enable_huge_pages，huge_page_size 单位=BLCKSZ 块数 | sysv_shmem.cpp:82 实锚 |
 
 ## 版本注记
 
@@ -328,6 +379,14 @@ VmallocUsed（数据已在采集包，渲染侧补齐即可）；②进程级 Vm
 ## 来源
 
 - 内核源码基线 `<linux-7.1-rc4-src>`（7.1-rc4）精读（2026-10-25）：
+- 三次补读（2026-11-23，显式大页，全清单对账发现 THP 有/hugetlb 无的缺口）：
+  fs/proc/meminfo.c:142-148,173（188 行验证）、mm/hugetlb.c:3746,4063,4533-4552
+  （7324 行验证，v7.1-rc4 镜像）；VastBase 侧 enable_huge_pages/huge_page_size=
+  sysv_shmem.cpp:82-118（openGauss 6.0.0 树）
+- 二次补读（2026-11-23，tmpfs 多实例）：mm/shmem.c:46,147-149,164,5436 +
+  shmem_fill_super（SB_KERNMOUNT 分支与 "per tmpfs instance / internal
+  instance is left unlimited" 注释，6019 行验证）、ipc/shm.c:113,721-722
+  （v7.1-rc4 镜像，kernel.org plain 抓取）
 - 二次补读（2026-10-27，NUMA 节）：drivers/base/node.c:572-582
   （node_read_numastat 六计数器渲染）、mm/page_alloc.c:3193-3198
   （NUMA_HIT/MISS/FOREIGN 分配计数）、include/linux/vmstat.h:240-248

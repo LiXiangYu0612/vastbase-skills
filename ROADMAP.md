@@ -78,8 +78,10 @@
 |---|---|---|
 | CPU 层（loadavg/softirq 预算/iowait 记账/切换/EEVDF/PSI） | ✅深（loadavg.c/softirq.c/core.c/stat.c 全核；EEVDF/PSI 锚点） | linux/cpu.md |
 | ★四域诊断树（跨层联判入口） | ✅路由级（2026-11-03 立，st=70% 案沉淀：五列基线→A~G 支/CPU↔Network 五通路/组合拳指纹；只路由不复制，阈值全部引自四域文件） | linux/os-triage.md |
-| 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引 | linux/memory.md |
+| 内存层（水位/kswapd/swappiness 比例模型/OOM 全链路/workingset/THP） | ✅深；THP 惯例注记、memcg swappiness=v1 专属实锚、vm.rst 未引；2026-11-23 补 tmpfs 多实例节（独立配额/同一物理池/SysV=shmall·POSIX=挂载 size，shmem.c 行级）+ **显式大页节**（hugetlb 预留制 vs THP 两套账，meminfo.c/hugetlb.c 行级；VastBase enable_huge_pages/huge_page_size=sysv_shmem.cpp:82 实锚——全清单对账发现的缺口） | linux/memory.md |
 | 页缓存核心机制（address_space/XArray/folio/LRU/a_ops/截断） | ✅深（2026-11-20 立，7.1-rc4 行级 10 文件精读；DBA 判读速查+双缓存互动） | linux/page-cache.md |
+| XFS 机制与删除恢复（AG/FSBNO 编码/删除三阶段/五级路径） | ✅深（2026-11-23 立，收割 vbdul 战役+xfs-recovery skill 全量；156 真机/204 实测锚；★free-scan 级未真机实测挂账在案） | linux/xfs.md |
+| ext4 机制与删除恢复（位图/删除即清 extent/正道=free 扫描/JBD2） | ✅深（2026-11-23 立，收割 vbdul 战役 memory 定案：300 行端到端/odd-align/位图完整性对账法） | linux/ext4.md |
 | IO 层（page-writeback 四闸门/readahead/iostat 口径/ext4 默认） | ✅深；★blk-mq 行级+★现代 SSD/NVMe 判读域（2026-11-19 用户令"HDD 那一套不适用"：调度器默认由队列拓扑定 NVMe=none/await 三档/SLC cliff 尾刺判读/PLP 与 VWC 源码位/smart-log 六字段判读表/rot=固件申报不可信 core.c:1681/温度降速/TRIM-WAF；NVMe 驱动 core.c+nvme.h 行级）；blk-mq 四文件行级；wbt/iomap 锚点 | linux/io-storage.md |
 | ★cgroup 层（cpu.max/CFS bandwidth/cpuset/pids/memory.high·max/io.max×wbt 分层） | ✅深（2026-11-19 立，7.1-rc4 行级精读 12 文件：throttle/period_timer/distribute 全链、cpu.stat 双 show 本组vs子孙陷阱、high 罚睡 vs max OOM 分叉、pids 逐级 charge、blk-throttle+rq_qos hook 次序；对接 AWR Cgroup 章/OOM 四型/wbt 案） | linux/cgroup.md |
 | 网络层（收包预算/两级连接队列/syncookies/TIME_WAIT/retries2/conntrack/关闭链路/客户端消失三形态） | ✅深；keepalive 默认 7200s·9·75s 实锚、conntrack 文案实锚、reqsk 回调名实锚；**2026-11-17 全锚 v7.1-rc4 复核**（8 命中/2 更正：mib 定义=snmp.h:196-197、early_drop=:1463） | linux/network.md |
@@ -111,6 +113,44 @@
 - [x] OOM B 型口径定稿（vb_tool 实采 cgroup v2）；[x] env-E VmPTE 总量确认 ≈5GB
       （现场实查 2026-11-05）；[ ] 成分拆解仍开（pmap 占比→定大页 vs
       archive_dest/posix_spawn 优先级）
+
+## 领域全清单对账（2026-11-23 用户令：按机制链枚举全集，防"想到什么补什么"）
+
+枚举方法：每类沿机制链列全节点对已有文件；缺口四档——✅本轮补 / ⚓可源码补
+（升级材料在注释）/ ◻缺指定材料（明说不硬答）/ ⛔撤项（附理由，沿 2026-11-05
+先例：凑数立账即 AI 腔）。
+
+### 存储与执行层（internals/ 24 文件）
+- ⚓ **TOAST 机制与判读**（大字段压缩/膨胀/外指针；二进制解析在 parse-page-tuple
+  skill，运维判读侧缺；材料=内核 tuptoaster.cpp）
+- ⚓ **两阶段提交 2PC**（prepared 事务；判据已有锚 pid IS NULL+vxid -1/xid，
+  机制件缺；材料=两阶段路径源码）
+- ⚓ **逻辑复制/逻辑解码**（物理复制三件已深，逻辑侧零覆盖；材料=解码源码+实测环境）
+- ⛔ WAL 物理记录格式专篇——判读价值已由 vbdul pg_logminer 承载，域内再立=重复家
+
+### 查询处理层（sql/ + internals 查询件）
+- ⚓ **Hint 体系**（plan hint 全集与不生效排查；SQL PATCH 是固化出口，hint 本体
+  判读缺；材料=OG hint 源码/文档）
+- ⛔ 游标/CTE 专篇——executor-operators 已含，独立成件凑数
+
+### 运维域（troubleshooting/ha/backup-recovery/performance）
+- ⚓ **审计日志**（GUC 族/开关/报表判读；材料=OG 审计模块源码）
+- ⚓ **权限模型/三权分立**（初始用户/三角色/继承；权限报错分诊高频；材料=acl 源码）
+- ⚓ **升级/补丁流程**（材料=VastBase 官方升级文档，**需用户指定**）
+- ⚓ **LVM 机制与快照**（vbdul LVM 字典战役可回灌运维侧：VG/LV/PE/快照备份面）
+- ◻ 已知问题清单（沿账：docs.vastdata 爬梳，需浏览器抓取方式）
+
+### OS 层（linux/ 13 文件）
+- ✅ **显式大页（hugetlb）**——2026-11-23 本轮补入 memory.md（THP 有/hugetlb 无，
+  对账发现；kernel 行级+OG enable_huge_pages 实锚）
+- ⚓ **时钟/时间同步**（NTP/chronyd/跳变对 HA 复制与认证的影响；锚=156 钟慢案）
+- ⛔ swap 专篇——水位/swappiness/OOM/tmpfs 节已闭环，独立成件凑数
+- ⛔ systemd/boot 流程——与库诊断无机制链
+
+### admin/migrations/tools（规划中三目录）
+- migrations：**材料未指定不启动**（知识缺口处置铁律）
+- tools：vb_tool 有独立手册且用户令"格式变更不立账"，维持规划中
+- admin：参数基线+版本谱系足够；升级/审计归运维域挂账项
 
 ## 性能优化缺口盘点（2026-11-05 用户问"还缺什么"，全量对账后立账）
 
