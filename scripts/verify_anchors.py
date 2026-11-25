@@ -152,6 +152,11 @@ CLAIMS = [
     ("lk", "kernel/exit.c", "tsk->exit_state = EXIT_ZOMBIE;", 750, "process-states.md"),
     ("lk", "fs/proc/base.c", "static int proc_pid_wchan(struct seq_file *m, struct pid_namespace *ns,", 421, "process-states.md"),
     ("lk", "kernel/sched/loadavg.c", "nr_active += (long)this_rq->nr_uninterruptible;", 85, "process-states.md"),
+    # 2026-11-25 D 连续性判别节（top 点采样 vs 计数器定论）
+    ("lk", "fs/proc/array.c", "seq_put_decimal_ull(m, \"voluntary_ctxt_switches:\\t\", p->nvcsw);", 400, "process-states.md"),
+    ("lk", "fs/proc/array.c", "nonvoluntary_ctxt_switches:", 401, "process-states.md"),
+    ("lk", "include/trace/events/sched.h", "TRACE_EVENT(sched_switch,", 220, "process-states.md"),
+    ("lk", "include/trace/events/sched.h", "__entry->prev_state\t= __trace_sched_switch_state(preempt, prev_state, prev);", 243, "process-states.md"),
 ]
 
 

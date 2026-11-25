@@ -152,6 +152,42 @@ procps 源码未落本地，对照表按【工程口径】给出，不逐条立�
 | "R 多 = CPU 不够" | R = 在跑或在队列；r 列 = nr_running 口径 | 对照 cpu.md loadavg 与 CFS 压测判读 |
 | CentOS 7 ps 出现 K/W 字母 | v3.10 老字母表（wakekill/waking），v4.19 起废弃 | 老版本正常形态，不另立新病 |
 
+## D 连续性判别：top 点采样的缺陷与计数器定论法（2026-11-25 追问回灌）
+
+`top`/`vmstat b` 的 D 是**采样瞬间的点值**：连采两次 D 只证明两个瞬间是 D，
+窗内可能 D→R→D 跑过来回（间歇越短漏检概率越低，但永远到不了"连续"）。
+
+**① 计数器差分——两采样点定论，khungtaskd 同款逻辑**：
+`/proc/<PID>/task/<TID>/status`（**线程必须走 task/TID 路径**，top -H 行是
+tid）的 `voluntary_ctxt_switches`/`nonvoluntary_ctxt_switches`
+（fs/proc/array.c:400-401，即 nvcsw/nivcsw）隔窗取差：
+
+- **Δ==0 ∧ 两端字母都是 D ⇒ 全窗连续 D**。证明链：离开 D 只能被
+  try_to_wake_up 拽成 R（core.c:4152）；回 D 必须自己被调度执行
+  set_current_state（计数必增）。计数没动 = 从未离开过睡眠。
+  hung task 检测器就是拿这计数当证人（task_is_hung，hung_task.c:103-128，
+  `switch_count` 不变才报）——**dmesg 一条 "blocked for more than 120
+  seconds" 本身就是"连续 D ≥120s"的官方证书**，且检测器天然抗采样间歇
+  （用累计计数不用重复采样）
+- **Δ>0 ⇒ 窗内至少上过一次 CPU ⇒ D 中间断过**（回过 R 才跑得起来）
+
+**② 全时间线（权威终审）**：ftrace/perf 的 sched_switch 路点每次切换带
+prev_state 字母（与 ps 同一套映射，include/trace/events/sched.h:251-263
+printk，含 "I"；prev_state 赋值 ：243 `__trace_sched_switch_state`）——
+`echo 1 > events/sched/sched_switch/enable` 后 grep `<TID>` trace 文件，
+每次睡/醒带时间戳，抖动形态直接展开。
+
+**③ 窗内积分（无采样）**：`/proc/pressure/io` some/full = 全任务 IO 卡滞
+时间占比（psi.c，4.20+）；单线程定性仍回①。
+
+**④ 连续盯守**：`watch -n1 grep ctxt .../task/<TID>/status` 人肉差分。
+
+**竞态注意**：采样前一瞬恰好被唤醒（D→R）会看到 R 而计数未动——Δ==0 但
+字母是 R 时不下结论，隔 1s 重采或走②定案。
+
+**误区**："top 间隔内变过状态" 无法从 top 本身判定，拿点采样序列推断
+连续性是赌博；计数器差分两采样点即定论。
+
 ## 与库侧联判（路由级）
 
 - `top -H -p $(pidof vastbase)` 里 pagewriter/walwriter/wb kworker 长驻 D、
