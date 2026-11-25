@@ -79,7 +79,9 @@
   的实证锚点与判读经验来源，逐案例挂边到对应机制文件
 - **基线层（admin/）**：g100-standard-params（+extract.py 自动对照）、
   version-map（版本谱系 LTS/DMR + 官方文档站 API 抓取配方 + 已知问题无公开
-  源的负向实锤）
+  源的负向实锤）、log-message-levels（日志级别两线排序：log_min_messages
+  LOG 乱序排在 ERROR 之上[elog.c 特判]/client 线数值序排最底；HINT 列表
+  非排序；降噪=关来源开关非调 min_messages）
 - **元层**：SKILL（路由）、ROADMAP（覆盖账本）、本图（关系）
 
 ## 核心边（按语义分组，箭头=推理方向）
