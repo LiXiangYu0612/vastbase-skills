@@ -34,6 +34,7 @@ description: VastBase（G100）数据库技能域。覆盖：AWR 报告（vb_too
 | CPU 高 / 系统慢 | 形态 P1/P2 → `performance/bottleneck-patterns.md` + `linux/cpu.md` |
 | sys 高（内核态）/ 周期性 sys 尖峰 / IPI 广播 | 四层分诊 → `troubleshooting/cpu-sys-high.md` + `linux/cpu.md`（判例 `cases/case-env-E-sys-spike-archiver-fork-202611.md`） |
 | IO 慢 / 读写延迟高 | 形态 P3/P4 → 同上 + `linux/io-storage.md` |
+| 盘基线验收 / "盘到底行不行" / fio 压测设计·结果判读 | `linux/fio.md`（缓存链 size 设计/极限判定法/假高指纹表） |
 | 备份/归档期间业务变慢 | `backup-recovery/backup-window-performance.md`（fork 税/IO 挤占/检查点/锁四形态，env-E 判例锚） |
 | 卡住 / 锁等待 / 死锁 | 形态 P5 → `bottleneck-patterns.md` + `troubleshooting/blocking-live.md` |
 | 表膨胀 / 清理不及 | 形态 P8 → `internals/autovacuum.md` |
@@ -47,6 +48,8 @@ description: VastBase（G100）数据库技能域。覆盖：AWR 报告（vb_too
 | 内存耗尽 / OOM / 53200 | 形态 P7 → `troubleshooting/oom-analysis.md`（四型分诊）+ `troubleshooting/resource-exhaustion.md`（应急）+ `linux/memory.md` |
 | 单条 SQL 慢 / 计划差 | `sql/sqlhc-analysis.md` |
 | 某等待事件 / 参数什么意思 | 知识查询（不过闸）：`wait-events.md` / `parameters.md` / `internals/` |
+| 任务状态字母判读 / D 状态 / hung task 判据 | `linux/process-states.md`（状态位全枚举+睡醒主线+三版判据分叉） |
+| 日志级别语义 / log_min_messages 排序 / 降噪 | `admin/log-message-levels.md`（两线排序+elog.c 特判+降噪走来源开关） |
 
 **全域根因闭环纪律（诊断三问，缺一不可）**：
 1. **是什么**——归入 12 形态（P1~P12）或救火件之一；排除也要留痕带数字依据
@@ -155,6 +158,7 @@ vastbase/
 | Linux CPU 层（负载/软中断/切换/iowait 口径） | `linux/cpu.md` | 判读 OS 段 CPU 列：load 含 D 状态、iowait 双刃、ksoftirqd、nvcswch |
 | Linux 内存层（水位/kswapd/swappiness/OOM 全链路） | `linux/memory.md` | pswpout、MemAvailable、OOM kill 现场；与 53200 两层闸门分层；构成逐项哪里异常（meminfo 逐键+LRU 四链+构成×水位联动） |
 | Linux IO 存储层（回写四闸门/块层/iostat 口径） | `linux/io-storage.md` | iostat %util 陷阱、vm.dirty_* 与库刷脏互踩、fsync 设备侧对账 |
+| ★fio 压测设计与结果判读 | `linux/fio.md` | IO 路径缓存链（页缓存/RAID 卡读·写缓存/盘内 DRAM/SLC cache/二级 SSD tier）→ size≥10× 最大缓存；precondition+ramp 稳态三件；极限判定（阶梯加压+Little's law 对账）；假高指纹表；aggrios 拓扑反推；写测试隔离红线（2026-11-25 实测 fio-3.7 判例） |
 | ★Linux 页缓存核心机制（address_space→XArray→folio→LRU，源码级） | `linux/page-cache.md` | 页缓存怎么组织/查找/驱逐/回写；a_ops（direct_IO 旁路入口）；XArray 三标记；LRU 五链与 swappiness 作用点；truncate 回写风暴；errseq |
 | XFS 机制与删除恢复判读 | `linux/xfs.md` | AG/SB·AGF·AGI·AGFL/双空闲 btree/大端；FSBNO=agblklog 位域编码坑；删除三阶段（BMX 残留=恢复窗口）；五级恢复路径与实测状态；xfs_db/fiemap 单位坑 |
 | ext4 机制与删除恢复判读 | `linux/ext4.md` | 组结构/位图/INODE_UNINIT 占位组；★删除即清 extent（与 XFS 相反）→恢复正道=free 块内容扫描（300 行端到端实测）；JBD2 双层字节序与 tag 解析；odd-align/同设备输出铁律 |

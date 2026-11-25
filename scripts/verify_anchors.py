@@ -14,6 +14,7 @@ TREES = {
     "og": os.environ.get("VASTBASE_OG_SRC", "/mnt/d/openGauss-server-v6.0.0/openGauss-server-v6.0.0/src"),
     "lk": os.environ.get("VASTBASE_LINUX_SRC", "/mnt/d/Obsidian/linux-master"),
     "cm": os.environ.get("VASTBASE_CM_SRC", "/mnt/d/og-cm-src/src"),
+    "fio": os.environ.get("VASTBASE_FIO_SRC", "/home/xiang/kernel-src/fio-3.7-mirror"),
 }
 
 # (树, 相对路径, 必须存在的串, 声称行号, 出处知识文件)
@@ -107,6 +108,16 @@ CLAIMS = [
     ("lk", "include/linux/nvme.h", "struct nvme_smart_log {", 742, "io-storage.md"),
     ("lk", "include/linux/nvme.h", "__u8\t\t\tpercent_used;", 747, "io-storage.md"),
     ("lk", "include/linux/nvme.h", "__u8\t\t\tdata_units_written[16];", 751, "io-storage.md"),
+    # 2026-11-25 fio.md 立件登记（fio-3.7 源码镜像 + 内核侧）
+    ("fio", "diskutil.c", "agg->ios[0] / agg->slavecount", 507, "fio.md"),
+    ("fio", "diskutil.c", "static void aggregate_slaves_stats(struct disk_util *masterdu)", 528, "fio.md"),
+    ("fio", "diskutil.c", "agg->slavecount++;", 548, "fio.md"),
+    ("fio", "engines/sync.c", "static enum fio_q_status fio_syncio_queue(struct thread_data *td,", 194, "fio.md"),
+    ("fio", "engines/sync.c", "ret = read(f->fd, io_u->xfer_buf, io_u->xfer_buflen);", 203, "fio.md"),
+    ("fio", "engines/sync.c", ".flags\t\t= FIO_SYNCIO,", 411, "fio.md"),
+    ("fio", "filesetup.c", "log_info(\"%s: Laying out IO file%s (%u file%s / %s%lluMiB)\\n\",", 1098, "fio.md"),
+    ("lk", "fs/iomap/direct-io.c", "iomap_dio_rw() always completes O_[D]SYNC writes regardless of whether the IO", 661, "fio.md"),
+    ("lk", "block/blk-sysfs.c", "QUEUE_LIM_RW_ENTRY(queue_wc, \"write_cache\");", 660, "fio.md"),
     # 2026-11-19 reset 风暴案判读锚（network.md EstabResets 四律）
     ("lk", "net/ipv4/tcp.c", "TCP_INC_STATS(sock_net(sk), TCP_MIB_ESTABRESETS);", 3016, "network.md"),
     ("lk", "net/ipv4/tcp.c", "TCP_INC_STATS(sock_net(sk), TCP_MIB_ATTEMPTFAILS);", 5096, "network.md"),

@@ -37,6 +37,10 @@ troubleshooting 现场救火的必经层。本分类从 **DBA 视角**讲 Linux�
   版本对照 v3.10/v4.19 实拉存档（~/kernel-src/version-variants/）
 - ✅ `memory.md` — 虚拟内存布局/伙伴+slab/page cache/水位与 swappiness/OOM kill
   全链路（kswapd·oom_reaper·oom_score_adj）；free 口径；与 53200/OOM 联判
+- ✅ `fio.md` — fio 压测设计与结果判读：IO 路径缓存链定 size（direct=1 只绕
+  页缓存，RAID 卡/盘内缓存只能灌满→数据集 ≥10× 最大缓存）/precondition+稳态/
+  极限判定法（阶梯加压+Little's law）/假高指纹表/aggrios 拓扑反推/写测试隔离
+  （2026-11-25 现场 fio-3.7 判例）；await 三档与 util 禁令单源在 io-storage
 - ✅ `io-storage.md` — IO 栈三层（VFS→page cache→块层）/inode·dentry 缓存/
   四种 IO 形态/调度器/iostat 口径；与库侧刷脏双层缓冲联判
 - ✅ `network.md` — 收发两流程/半全连接队列/丢包七层排查/conntrack/TIME_WAIT/

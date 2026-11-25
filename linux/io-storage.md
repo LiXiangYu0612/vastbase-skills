@@ -255,7 +255,8 @@ cgroup.md「io 控制器」节（两层叠加判读）。
   即实锤，`wait-events.md` 溯源联动）
 - 基准工具 fio：`direct=1`（绕页缓存）+ 指定 bs/iodepth/numjobs 才是盘的
   真实能力；默认参数（buffered, bs=4k, iodepth=1）测出来的是页缓存+单队列，
-  没有意义
+  没有意义——压测设计/size 按 RAID 卡·盘内缓存链定、极限判定、输出逐段
+  判读全量 → `fio.md`
 
 ## 现代 SSD/NVMe 判读域（HDD 经验失效清单，2026-11-19 立）
 

@@ -33,12 +33,14 @@
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
   overview_table.py RULES）
-- **OS 层（linux/，13）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
+- **OS 层（linux/，16）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
   CPU↔Network 五通路/组合拳指纹——"症状层≠根因层"的路由枢纽）**、cpu、memory、
   **process-states（任务状态位全枚举 R/S/D/T/t/Z/X/P/I：状态机睡醒主线[set_current_state+schedule/try_to_wake_up 唯一入口]/
   D 深睡三型与 hung task 判据三版分叉[3.10 等值/4.19 注释点名 KILLABLE/7.1 位测跳 NOLOAD]/信号杀不死纯 D/
   I 态不进 loadavg——字母与位值的源码定论件）**、
-  **page-cache（页缓存数据结构主线：address_space→XArray→folio→LRU→回写/截断——io-storage 与 memory 的底座件）**、io-storage、**cgroup（五控制器源码层：cpu.max 配额咬/throttled_usec 本组vs子孙/
+  **page-cache（页缓存数据结构主线：address_space→XArray→folio→LRU→回写/截断——io-storage 与 memory 的底座件）**、io-storage、
+  **fio（压测设计与结果判读：IO 路径缓存链[页缓存/RAID 卡读·写缓存/盘内 DRAM/SLC cache/二级 SSD tier]→size≥10× 最大缓存铁律/
+  precondition+ramp 稳态三件/极限判定[阶梯加压膝盖点+Little's law 对账]/假高指纹表/aggrios 拓扑反推/写测试隔离红线）**、**cgroup（五控制器源码层：cpu.max 配额咬/throttled_usec 本组vs子孙/
   memory.high 罚睡 vs max OOM/pids fork EAGAIN/io.max×wbt 两层——"库慢 OS 不慢"
   与容器/K8S 限额判读的根）**、network、
   **switch-side-logs（交换机侧排查全景：日志族全表[实拍三族+工程口径七族]/
@@ -47,6 +49,9 @@
   唯一直接证据，镜像口豁免）**、**net-diag-fullchain（网络全链路定责：探测/网卡五族/DOM/抓包
   SEQ 对账，八步 SOP+PCIe+对时）**、**net-midpath（中间层四段：L2 机制/L3 路径/
   中间设备/虚拟化云，间歇规律性断连与"计数器全绿仍抖"的判据富矿）**、
+  **xfs（XFS 机制与删除恢复：AG/SB/AGF/AGFL/双空闲 btree/大端；删除三阶段
+  BMX 残留=恢复窗口；五级恢复路径）**、**ext4（组结构/删除即清 extent
+  [与 XFS 相反]→恢复正道=free 块内容扫描；JBD2 双层字节序）**、
   file-descriptors、tracing-tools
   （内核源码基线 7.1-rc4，生产 3.10 差异见各文件版本注记）
 - **救火操作层（troubleshooting/，10）**：startup-failure、connection-refused、
@@ -131,6 +136,8 @@ page-lsn-mismatch ↔ double-write / wal-replay（pd_lsn 判据同源）。
   真等待"清单
 - operator-memory ↔ buffer-manager：gs_sysmemory_busy 全局水位同时作用于
   spill 决策与淘汰压力
+- io-storage ↔ fio：IO 栈机制与 await 三档/util 禁令的单源在 io-storage，
+  fio 是压测操作件（size 设计吃缓存链、判读回指 io-storage 口径不复制数字）
 - os-triage ↔ cpu/memory/io-storage/network：四域枢纽——单域症状先扫其余三域
   基线（socket 症状常是 st/欠CPU 的下游投影，st=70% 案实证）
 - flush-checkpoint ↔ locks：dw 批次拿锁前 XLogWaitFlush（WAL 慢拖刷脏）
