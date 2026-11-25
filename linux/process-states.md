@@ -169,6 +169,28 @@ top 采到 D 的概率 ≈ 线程 D 占空比 = **每秒进入 D 次数 × 单�
   **vmstat b 列 = 瞬间 D 个数**，线程基数大时单个占空比 <5% 也常非零，
   b 列读数先除以线程基数再判
 
+## vmstat b 列口径：nr_iowait 不是数 D（2026-11-25 追问回灌三）
+
+`/proc/stat` 的 `procs_blocked`（vmstat b 的数据源）**从头到尾不是数
+TASK_UNINTERRUPTIBLE 任务**——三版实拉一致（v3.10 stat.c:174 /
+v4.19 :173 / v7.1 :183）都直接打 **`nr_iowait()`**（fs/proc/stat.c:183）：
+
+- 计数链：io_schedule_prepare 置 `current->in_iowait=1`（core.c:8078）→
+  __block_task 里 `if (p->in_iowait) rq->nr_iowait++`（sched.h:2983）→
+  nr_iowait_cpu = rq->nr_iowait（core.c:5452）→ nr_iowait 全机求和（:5487）
+- **b 数的是"走 io_schedule 睡着的任务"**，ps grep ^D 数的是状态位——两者
+  相等 ⇔ 所有 D 恰好都在 IO 路径（DB 盒子常态：pagewriter/walwriter/kworker
+  的 fsync/wbt 全走 io_schedule）
+- **分叉判读**：ps 有 D 而 b≈0 ⇒ D 在非 IO 路径（内核互斥量/内存罚睡）→
+  wchan 分流；b 与 wa 列**同源**（同 rq->nr_iowait）——b>0 且该核进 idle
+  才记 wa，全核忙时 b 大而 wa≈0；core.c:5458 注释原文自认 iowait 记账
+  "mostly bollocks (on SMP)"（任务可醒到别的 CPU，per-CPU 读数无意义，
+  只有全局求和可靠）
+- **b=1-2 恒定 = 群体占空比底噪**（上节公式的群体版：N 个后台 IO 线程×
+  各自占空比 ≈ 恒有 1-2 个在 IO 睡）——稳态底噪非病灶；病灶形态 =
+  b 跳到远超底噪且锁死不动（wbt 案 b=7 恒 53 分钟，io-storage.md）或叠
+  hung task 报告/await 抬升
+
 ## D 连续性判别：top 点采样的缺陷与计数器定论法（2026-11-25 追问回灌）
 
 `top`/`vmstat b` 的 D 是**采样瞬间的点值**：连采两次 D 只证明两个瞬间是 D，

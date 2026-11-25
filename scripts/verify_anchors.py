@@ -157,6 +157,12 @@ CLAIMS = [
     ("lk", "fs/proc/array.c", "nonvoluntary_ctxt_switches:", 401, "process-states.md"),
     ("lk", "include/trace/events/sched.h", "TRACE_EVENT(sched_switch,", 220, "process-states.md"),
     ("lk", "include/trace/events/sched.h", "__entry->prev_state\t= __trace_sched_switch_state(preempt, prev_state, prev);", 243, "process-states.md"),
+    # 2026-11-25 b 列口径节（procs_blocked=nr_iowait 非数 D）
+    ("lk", "fs/proc/stat.c", "nr_iowait());", 183, "process-states.md"),
+    ("lk", "kernel/sched/core.c", "unsigned int nr_iowait_cpu(int cpu)", 5452, "process-states.md"),
+    ("lk", "kernel/sched/core.c", "unsigned int nr_iowait(void)", 5487, "process-states.md"),
+    ("lk", "kernel/sched/core.c", "current->in_iowait = 1;", 8078, "process-states.md"),
+    ("lk", "kernel/sched/sched.h", "atomic_inc(&rq->nr_iowait);", 2983, "process-states.md"),
 ]
 
 
