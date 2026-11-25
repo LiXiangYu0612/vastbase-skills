@@ -169,6 +169,34 @@ top 采到 D 的概率 ≈ 线程 D 占空比 = **每秒进入 D 次数 × 单�
   **vmstat b 列 = 瞬间 D 个数**，线程基数大时单个占空比 <5% 也常非零，
   b 列读数先除以线程基数再判
 
+## D 线程正常性判定：五步决策树（2026-11-25 追问回灌四，合成节）
+
+**总纲：正常 ≠ 没有 D。正常 = D 在职责范围内、时长与 await 同量级、名单在
+轮转。异常三指纹：死点不该在、时间凝固、对端对不上账。**
+
+1. **身份先验**：`ps -eo stat,wchan:32,tid,pid,cmd | grep '^D'`——后台 IO
+   线程（pagewriter/walwriter/kworker flusher）睡 IO = 设计内职责；前台
+   backend 在 D = 会话直接感知，即使机制正常也值得治理
+2. **死点分流（wchan 三分）**：io_schedule/wbt_wait/blk_mq_get_tag/
+   folio_wait_bit 族 → IO 路径走 3；mutex_lock/rwsem 族 → 锁路径走 4；
+   memcg 罚睡 → 对照 cgroup 限额；**同名 wchan 多线程聚集 = 同一资源排队**
+   （wbt 案 7 个全 rq_qos_throttle）
+3. **IO 路径对账**（只看 await+绝对 IOPS，util 不看）：await 正常+名单
+   轮转=**健康闭环**；await 抬升+D 堆积=设备真慢；await 正常但 D 时长≫
+   await=排队段（wbt 闸/tag 排队，查 aqu）；w/s 精确=0+aqu≈0+读照常+
+   D 凝固=唤醒链断裂死锁形态（wbt 案），立即升级
+4. **锁路径找持有者**：/proc/<tid>/stack + 内核 blocker 报告（7.1 新增）；
+   死锁（持有者也在 D 且成环）必然演化成第 5 档官方报告
+5. **时间标尺+名单轮转定性（单判据最实用）**：watch -n5 盯 D 名单——
+   **轮换=每个都在推进=正常；固化（同批 tid 一直是 D）=死等嫌疑** →
+   Δ(nvcsw+nivcsw) 差分定连续性。时间三档：D 时长应与实测 await 同量级
+   （量级差⇒排队段）；1s~120s 连续 D=人工对账盲区（hung task 不报）；
+   >120s=dmesg 官方报告——**三个报告盲区**：warnings 10 次后静默、
+   KILLABLE 不报、FROZEN 谎报 D
+
+**一句话**：轮转+await 对上账=正常；固化+对不上账+官方报告=异常；中间地带
+计数器差分补证。
+
 ## vmstat b 列口径：nr_iowait 不是数 D（2026-11-25 追问回灌三）
 
 `/proc/stat` 的 `procs_blocked`（vmstat b 的数据源）**从头到尾不是数
