@@ -29,6 +29,12 @@ troubleshooting 现场救火的必经层。本分类从 **DBA 视角**讲 Linux�
 
 - ✅ `cpu.md` — 平均负载/上下文切换/D 状态/软中断；mpstat·vmstat·pidstat·perf；
   内核线程识别（ksoftirqd/kworker/kswapd）；us/sy/si/wa 与 VastBase 现象联判
+- ✅ `process-states.md` — 任务状态位全枚举（R/S/D/T/t/Z/X/P/I ↔ TASK_* 位，
+  task_state_array 权威字母表）；状态机睡醒主线（set_current_state+schedule /
+  try_to_wake_up 唯一入口 / nr_uninterruptible 记账位）；D 深睡三型与 hung
+  task 判据三版分叉（3.10 等值 / 4.19 点名 skip KILLABLE / 7.1 位测跳
+  NOLOAD）；信号杀不死纯 D 的源码出处；取证命令族（wchan/stack/sysrq t）；
+  版本对照 v3.10/v4.19 实拉存档（~/kernel-src/version-variants/）
 - ✅ `memory.md` — 虚拟内存布局/伙伴+slab/page cache/水位与 swappiness/OOM kill
   全链路（kswapd·oom_reaper·oom_score_adj）；free 口径；与 53200/OOM 联判
 - ✅ `io-storage.md` — IO 栈三层（VFS→page cache→块层）/inode·dentry 缓存/

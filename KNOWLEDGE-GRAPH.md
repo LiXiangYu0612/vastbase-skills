@@ -33,8 +33,11 @@
   metrics、wait-events、bottleneck-patterns、parameters、log-analysis、diagnostic-map、
   check-inventory（检查项总账：两报告能力边界+44 项机械闸镜像，阈值同步
   overview_table.py RULES）
-- **OS 层（linux/，12）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
+- **OS 层（linux/，13）**：**os-triage（四域诊断树：五列基线→A~G 支分诊，
   CPU↔Network 五通路/组合拳指纹——"症状层≠根因层"的路由枢纽）**、cpu、memory、
+  **process-states（任务状态位全枚举 R/S/D/T/t/Z/X/P/I：状态机睡醒主线[set_current_state+schedule/try_to_wake_up 唯一入口]/
+  D 深睡三型与 hung task 判据三版分叉[3.10 等值/4.19 注释点名 KILLABLE/7.1 位测跳 NOLOAD]/信号杀不死纯 D/
+  I 态不进 loadavg——字母与位值的源码定论件）**、
   **page-cache（页缓存数据结构主线：address_space→XArray→folio→LRU→回写/截断——io-storage 与 memory 的底座件）**、io-storage、**cgroup（五控制器源码层：cpu.max 配额咬/throttled_usec 本组vs子孙/
   memory.high 罚睡 vs max OOM/pids fork EAGAIN/io.max×wbt 两层——"库慢 OS 不慢"
   与容器/K8S 限额判读的根）**、network、
