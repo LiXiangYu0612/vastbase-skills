@@ -169,14 +169,44 @@ top 采到 D 的概率 ≈ 线程 D 占空比 = **每秒进入 D 次数 × 单�
   **vmstat b 列 = 瞬间 D 个数**，线程基数大时单个占空比 <5% 也常非零，
   b 列读数先除以线程基数再判
 
+## 线程级判读：thread=task，ps 默认视图漏线程 D（2026-11-25 追问回灌五）
+
+**内核粒度铁律：thread 就是 task_struct**——状态位/nvcsw/wchan/in_iowait
+全挂在线程上：
+
+- hung task 检测**逐线程遍历**：`for_each_process_thread`（v7.1
+  hung_task.c:194；v3.10 :187 同）——报告里的 task 名就是线程 comm
+  （wbt 案能看到 pagewriter/walwriter/kworker 名字的原因）
+- b 列/procs_running/nr_iowait 全按任务（线程）计数，**不受多线程进程
+  折叠影响**；PSI 同
+- `/proc/<PID>/task/<TID>/status` 与主进程 status 用同一渲染函数
+  （fs/proc/base.c:3323/:3669 两处注册）——State/nvcsw/wchan 每线程
+  独立一份，前文连续性差分、占空比、正常性判定**全部是线程粒度**
+
+**★用户态漏斗大坑**：plain `ps -e | grep '^D'` 只读 /proc/PID/stat = **主
+线程（leader）状态**——多线程进程（VastBase 整库一个进程、几十个 worker
+线程，comm=worker）里的业务 D **全部漏掉**，只看到 leader 的 S，造成
+"全库无 D"假象。【工程口径】（procps 源码未落本地，结论确定）。正确姿势：
+
+```bash
+ps -eLo stat,wchan:32,tid,comm | grep '^D'          # 全机线程视图
+ps -T -p $(pidof vastbase)                          # 单进程逐线程(LWP)
+grep '^State:\s*D' /proc/<PID>/task/*/status        # 逐线程 status 统计
+top -H -p $(pidof vastbase) ; pidstat -t -p <pid>   # 常规监控件
+```
+
+**前文四节（连续性差分/占空比/b 列口径/五步决策树）的命令凡涉 VB 都按
+线程视图执行**——G100 backend=worker 线程，D 判定从来是线程级的事。
+
 ## D 线程正常性判定：五步决策树（2026-11-25 追问回灌四，合成节）
 
 **总纲：正常 ≠ 没有 D。正常 = D 在职责范围内、时长与 await 同量级、名单在
 轮转。异常三指纹：死点不该在、时间凝固、对端对不上账。**
 
-1. **身份先验**：`ps -eo stat,wchan:32,tid,pid,cmd | grep '^D'`——后台 IO
-   线程（pagewriter/walwriter/kworker flusher）睡 IO = 设计内职责；前台
-   backend 在 D = 会话直接感知，即使机制正常也值得治理
+1. **身份先验**（线程视图，见上节漏斗坑）：`ps -eLo stat,wchan:32,tid,comm
+   | grep '^D'`——后台 IO 线程（pagewriter/walwriter/kworker flusher）睡 IO
+   = 设计内职责；前台 worker/backend 线程在 D = 会话直接感知，即使机制
+   正常也值得治理
 2. **死点分流（wchan 三分）**：io_schedule/wbt_wait/blk_mq_get_tag/
    folio_wait_bit 族 → IO 路径走 3；mutex_lock/rwsem 族 → 锁路径走 4；
    memcg 罚睡 → 对照 cgroup 限额；**同名 wchan 多线程聚集 = 同一资源排队**

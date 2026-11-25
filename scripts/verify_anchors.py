@@ -163,6 +163,10 @@ CLAIMS = [
     ("lk", "kernel/sched/core.c", "unsigned int nr_iowait(void)", 5487, "process-states.md"),
     ("lk", "kernel/sched/core.c", "current->in_iowait = 1;", 8078, "process-states.md"),
     ("lk", "kernel/sched/sched.h", "atomic_inc(&rq->nr_iowait);", 2983, "process-states.md"),
+    # 2026-11-25 线程级判读节（thread=task，ps 默认漏线程 D）
+    ("lk", "kernel/hung_task.c", "for_each_process_thread(g, t) {", 194, "process-states.md"),
+    ("lk", "fs/proc/base.c", 'ONE("status",     S_IRUGO, proc_pid_status),', 3323, "process-states.md"),
+    ("lk", "fs/proc/base.c", 'ONE("status",    S_IRUGO, proc_pid_status),', 3669, "process-states.md"),
 ]
 
 
