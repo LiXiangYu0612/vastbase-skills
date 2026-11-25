@@ -153,7 +153,54 @@ logbuffer 中 MSTP 拓扑变化/根桥变化/port 角色翻转类日志 + trap�
   转发层面通常无中断；但**成员翻动期间该链路承载的流会瞬时丢包**）；
 - `display eth-trunk` 的 Unselect 原因列（ERROR_DOWN/对端 LACP 超时等）。
 
-### 3.9 堆叠/CSS 与 VRRP 族【工程口径】
+### 3.9 ARP 安全/port-defend 族（SECE/4/PORT_ATTACK_OCCUR 等）【实拍锚 2026-11-25】
+
+日志形态（S5720，`display logbuffer`）：
+```
+SECE/4/PORT_ATTACK_OCCUR: Auto port-defend started
+  (SourceAttackInterface=XGigabitEthernet7/0/3, AttackProtocol=ARP-REQUEST)
+SECE/4/PORT_ARP*_PACKET_GLOBAL: ... dropped all arp packets exceeds the
+  threshold. (SourceMAC=xxxx-xxxx-xxxx, SourceIp=x.x.x.x)
+```
+- **机制**：端口 ARP 速率超防攻击阈值 → 自动起 port-defend 并丢超阈 ARP
+  报文；GLOBAL 版=全局限速也超了，带 SourceMAC/IP 直接点名嫌疑主机
+- **对 DB 是真异常不是噪音**：ARP 被成包丢 → 网关/对端解析失败 →
+  业务侧表现=间歇连不上/闪断（与主机侧 reset 风暴、登录卡顿形态可对账）
+- **判读**：同一端口反复触发（本案 7/0/3 半小时内 5 次）=该口下挂定点问题：
+  主机扫描/中毒、二层环路广播风暴、扫描类业务高频 ARP；不点名真"攻击"
+  ——先 `display lldp neighbor` + `display mac-address interface <port>`
+  对出人，再拿 SourceMAC 对号
+- **取证**：`display auto-port-defend statistics`（丢包计数）、
+  `display arp packet-statistics`（收发/丢弃对账）
+- **联动**：拥塞/变化率族同发时（见 3.10/3.11），单口多族齐中=重点口
+
+### 3.10 拥塞预警族（CONGESTIONRISK）【实拍锚 2026-11-25】
+
+```
+DEVM/4/CONGESTIONRISK: Slot=3: There is a congestion risk on port
+  XGigabitEthernet7/0/15
+```
+- **机制**：端口队列缓冲吃满预警——**真拥塞，误报不了**（与 ARP 族不同）
+- 判读：持续打=持续超订/微突发；接 DB/存储的口拥塞 → 重传/延迟抖动，
+  上联口拥塞 → 下行走量超订。与 OUTDISCARD 族（3.1）的关系：这是预警，
+  OUTDISCARD 是丢已成事实——只 CONGESTIONRISK 无丢弃=贴着上限还没丢
+- 取证：`display interface <port>`（出方向 discard/带宽利用率）+
+  接的是谁（lldp neighbor），对回主机侧时间轴
+
+### 3.11 速率变化率族（IFPDT/4/INT_INOUTRDRO：rate change ratio exceeded）【实拍锚 2026-11-25】
+
+```
+IFPDT/4/INT_OUTRDRD: The output rate change ratio exceeded the threshold.
+  (IfIndex=117, InterfaceName=XGigabitEthernet7/0/15, ThresholdPercent=50,
+   CurrentStatisticalPeriodRate=..., LastStatisticalPeriodRate=...)
+```
+- **机制**：相邻采样窗速率变化超 50% 阈值——流量突增/突降提示，**单看
+  不算病**（备份启动/批量导出/大查询突发都会打）
+- **判读**：单发+业务可解释=忽略；**与 CONGESTIONRISK 同口同发=该口流量
+  剧烈波动且已拥塞**（实拍判例：7/0/15 三族齐中——变化率输入输出+拥塞+ARP）
+- 单独出现时先问业务时间轴再动网络，防过度诊断
+
+### 3.12 堆叠/CSS 与 VRRP 族【工程口径】
 
 - 堆叠（iStack）/CSS（框式集群）：主备切换日志（`display css status` /
   `display switchover state` 按机型）——主控切换=秒级全机事件，与
@@ -161,7 +208,7 @@ logbuffer 中 MSTP 拓扑变化/根桥变化/port 角色翻转类日志 + trap�
 - VRRP：Master 迁移（`display vrrp verbose`）=网关漂移，ARP 重新解析
   窗口内主机到网关流量瞬断。
 
-### 3.10 环境/硬件族【工程口径】
+### 3.13 环境/硬件族【工程口径】
 
 `display device`（板卡 Fault/Offline）、`display environment`（温度）：
 过热降频/板卡故障均可造成瞬断或错包；框式另看电源/风扇。错包型问题
@@ -178,6 +225,10 @@ logbuffer 中 MSTP 拓扑变化/根桥变化/port 角色翻转类日志 + trap�
 5. **镜像/观测端口豁免**（2026-11-17 用户令：镜像口另说）——观测口把镜像
    流量再发出，出口速率天然高于接入业务口，其丢弃/拥塞告警只反映镜像管道
    容量，不代表业务受损；判读前先剔除镜像口
+6. **单口多族齐中=重点口**（2026-11-25 实拍判例：7/0/15 变化率+拥塞+ARP
+   三族齐中）——先按端口归并日志再看族，一个口三个族比五个口各一条告警重
+7. **ARP/port-defend 族别当噪音放过**：它丢的是解析报文，业务侧表现为
+   间歇连不上/闪断；同口反复触发=该口下挂定点问题（对号 SourceMAC）
 
 ## §4 端口健康层
 
@@ -294,6 +345,24 @@ record`（§3.7）。警惕形态：表项规模逼近规格上限（学习爆�
 2 风暴控制是否兜底（§6）；定位私接/误接线端口，按端口处置
 ```
 
+**双交换机互插三态判定**（2026-11-25 用户问"两个交换机互插会广播风暴吗"）：
+
+| 互联方式 | 是否二层环 | 结果 |
+|---|---|---|
+| 一根线 | 无环（树形） | 不风暴 |
+| 两根线 + STP 开（S 系列默认 MSTP enable） | 有环被砍 | 不风暴，ALTE/DISCARDING 口空转；`display stp brief` 验 |
+| 两根线 + STP 关/edge+bpdu-filter/BPDU 被中间设备吃 | 真环 | **广播风暴必然** |
+| 两根线做成 eth-trunk（lacp/手工） | 一条逻辑链 | 不依赖 STP，双活——**正确姿势** |
+
+- **机制**：广播/未知单播泛洪；双机双线=两份拷贝永续线速循环（互联口 100%
+  广播、终端每周期被轰炸）；三台三角环=每跳 ×2 指数；伴随 MAC 漂移（环路
+  最强指纹）+ ARP 密度爆表（→ §3.9 port-defend 报警）
+- **日志指纹对账**：同口反复 ARP port-defend + CONGESTIONRISK + 变化率
+  超阈三族齐中（S5720 实拍形态）与环路风暴形状吻合——`display stp brief`
+  两个互联口全 DESIGNATED 无 ALTE 即立案
+- 处置：双线改 eth-trunk 根治 / 拔一根临时 / 互联口 broadcast-suppression
+  兜底（防私插打垮全网）
+
 ## root cause 链（为什么低利用率也丢）【实锚+推断级】
 
 ```
@@ -345,9 +414,10 @@ Retrans 归因链上"丢在中间网络"的唯一直接证据**。
 ## 版本注记
 
 - 设备：华为 S12708（框式，VRP），2026-11-17 实拍 logbuffer + interface
-  brief + arp；`display qos queue statistics`/微突发检测等命令名为 VRP S
+  brief + arp；S5720-1（2026-11-25 实拍 logbuffer，§3.9-§3.11 三族出自该
+  样本）；`display qos queue statistics`/微突发检测等命令名为 VRP S
   系列通用语法，**具体机型支持矩阵未逐一核实（推断级）**
-- 2026-11-19 扩充的 §1/§2/§3.4-§3.10/§4-§7 为【工程口径】（VRP 通用
+- 2026-11-19 扩充的 §1/§2/§3.4-§3.8/§3.12-§3.13/§4-§7 为【工程口径】（VRP 通用
   命令面），**未经本项目实拍**：首次现场使用时逐条 `display xxx ?` 核对
   命令存在性与输出列名，拿到实拍输出后按实锚纪律逐条升锚并回写本注记
 - 机制层（出口队列/背板拥塞）为通用交换架构；VRP 源码不可得，字段级语义
